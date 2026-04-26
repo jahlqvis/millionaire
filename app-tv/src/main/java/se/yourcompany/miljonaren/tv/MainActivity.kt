@@ -90,6 +90,7 @@ private fun MillionaireTvRoot() {
             HomeScreen(
                 state = HomeUiState(
                     title = stringResource(id = R.string.app_name),
+                    subtitle = stringResource(id = R.string.home_subtitle),
                     primaryActionLabel = stringResource(id = R.string.home_start_game)
                 ),
                 onStartGame = {
@@ -149,6 +150,11 @@ private fun MillionaireTvRoot() {
                     AnswerFeedback.WRONG -> stringResource(id = R.string.gameplay_feedback_wrong)
                     null -> null
                 }
+                val isAnswerCorrect = when (uiState.answerFeedback) {
+                    AnswerFeedback.CORRECT -> true
+                    AnswerFeedback.WRONG -> false
+                    null -> null
+                }
 
                 val gameplayState = GameplayUiState(
                     roundLabel = stringResource(
@@ -167,7 +173,6 @@ private fun MillionaireTvRoot() {
                     options = activeQuestion.options.map { option ->
                         GameplayOptionUiState(
                             id = option.id,
-                            text = option.textSv,
                             displayText = stringResource(
                                 id = R.string.gameplay_option,
                                 option.id,
@@ -176,6 +181,7 @@ private fun MillionaireTvRoot() {
                         )
                     },
                     answerFeedback = answerFeedback,
+                    isAnswerCorrect = isAnswerCorrect,
                     answerLocked = uiState.answerLocked
                 )
 

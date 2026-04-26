@@ -4,6 +4,7 @@
     <string name="placeholder_start">Tryck OK för att starta</string>
 
     <string name="home_start_game">Starta spel</string>
+    <string name="home_subtitle">Svenskt frågespel för TV</string>
 
     <string name="player_setup_title">Välj antal spelare</string>
     <string name="player_setup_player_label">Spelare %1$d</string>
