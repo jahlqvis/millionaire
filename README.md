@@ -97,3 +97,7 @@ After a successful debug build, APK is created at:
 - Persist game history with Room
 - Add lifelines (`50/50`, audience poll, phone-a-friend style)
 - Optional online multiplayer/companion features in later phases
+
+## Implementation Checklist
+
+- Sprint 1.1 execution checklist: `docs/sprint-1.1-checklist.md`
