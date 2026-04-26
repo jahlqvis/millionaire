@@ -79,6 +79,43 @@ sdk.dir=/Users/<your-user>/Library/Android/sdk
 ./gradlew :domain:domain-usecase:test
 ```
 
+### Launch Emulator and Run the App (CLI)
+
+If you installed the Android command-line tools and AVD setup used in this repo, you can run everything from terminal.
+
+1. Set environment variables:
+
+```bash
+export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+export ANDROID_SDK_ROOT="$HOME/Library/Android/sdk"
+export PATH="/opt/homebrew/opt/openjdk@17/bin:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
+```
+
+2. Start the Android TV emulator:
+
+```bash
+emulator -avd millionaire-tv
+```
+
+3. Build and install the app:
+
+```bash
+./gradlew :app-tv:assembleDebug
+adb install -r app-tv/build/outputs/apk/debug/app-tv-debug.apk
+```
+
+4. Launch the app on the emulator:
+
+```bash
+adb shell am start -n se.yourcompany.miljonaren.tv/.MainActivity
+```
+
+Optional: stop the emulator when done:
+
+```bash
+adb emu kill
+```
+
 ## Build Output
 
 After a successful debug build, APK is created at:
