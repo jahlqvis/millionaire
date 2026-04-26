@@ -13,12 +13,16 @@ import androidx.compose.ui.unit.dp
 data class ResultsPlayerUiState(
     val placement: Int,
     val name: String,
-    val score: Int
+    val score: Int,
+    val rowLabel: String
 )
 
 data class ResultsUiState(
+    val title: String,
     val isTie: Boolean,
-    val winnerName: String?,
+    val tieLabel: String,
+    val winnerLabel: String,
+    val restartLabel: String,
     val players: List<ResultsPlayerUiState>
 )
 
@@ -33,19 +37,19 @@ fun ResultsScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(text = "Resultat")
+        Text(text = state.title)
         if (state.isTie) {
-            Text(text = "Oavgjort")
+            Text(text = state.tieLabel)
         } else {
-            Text(text = "Vinnare: ${state.winnerName ?: "-"}")
+            Text(text = state.winnerLabel)
         }
 
         state.players.forEach { player ->
-            Text(text = "${player.placement}. ${player.name} - ${player.score} poang")
+            Text(text = player.rowLabel)
         }
 
         Button(onClick = onRestart) {
-            Text(text = "Till startsidan")
+            Text(text = state.restartLabel)
         }
     }
 }

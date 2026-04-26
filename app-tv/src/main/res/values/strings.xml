@@ -1,5 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Miljonaren TV</string>
-    <string name="placeholder_start">Tryck OK for att starta</string>
+    <string name="placeholder_start">Tryck OK för att starta</string>
+
+    <string name="home_start_game">Starta spel</string>
+
+    <string name="player_setup_title">Välj antal spelare</string>
+    <string name="player_setup_player_label">Spelare %1$d</string>
+    <string name="player_setup_back">Tillbaka</string>
+    <string name="player_setup_start">Starta spel</string>
+    <string name="player_setup_validation_min_one">Minst en spelare krävs</string>
+
+    <string name="gameplay_round">Runda %1$d av %2$d</string>
+    <string name="gameplay_turn">Tur: %1$s</string>
+    <string name="gameplay_question">Fråga: %1$s</string>
+    <string name="gameplay_option">%1$s: %2$s</string>
+    <string name="gameplay_feedback_correct">Rätt svar!</string>
+    <string name="gameplay_feedback_wrong">Fel svar</string>
+    <string name="gameplay_empty_state">Ingen aktiv omgång</string>
+
+    <string name="results_title">Resultat</string>
+    <string name="results_tie">Oavgjort</string>
+    <string name="results_winner">Vinnare: %1$s</string>
+    <string name="results_score_row">%1$d. %2$s - %3$d poäng</string>
+    <string name="results_restart">Till startsidan</string>
+    <string name="results_empty_state">Inget resultat</string>
+
+    <string name="default_player_name">Spelare %1$d</string>
 </resources>

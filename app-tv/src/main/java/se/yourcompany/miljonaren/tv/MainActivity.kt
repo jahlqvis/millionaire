@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -27,9 +28,8 @@ import se.yourcompany.miljonaren.feature.playersetup.PlayerSetupScreen
 import se.yourcompany.miljonaren.feature.results.ResultsPlayerUiState
 import se.yourcompany.miljonaren.feature.results.ResultsScreen
 import se.yourcompany.miljonaren.feature.results.ResultsUiState
+import se.yourcompany.miljonaren.tv.game.AnswerFeedback
 import se.yourcompany.miljonaren.tv.game.GameViewModel
-
-private val defaultPlayerNames = listOf("Spelare 1", "Spelare 2", "Spelare 3", "Spelare 4")
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,6 +45,13 @@ private fun MillionaireTvRoot() {
     val navController = rememberNavController()
     val gameViewModel: GameViewModel = viewModel()
     val uiState by gameViewModel.uiState.collectAsState()
+    val defaultPlayerNames = listOf(
+        stringResource(id = R.string.default_player_name, 1),
+        stringResource(id = R.string.default_player_name, 2),
+        stringResource(id = R.string.default_player_name, 3),
+        stringResource(id = R.string.default_player_name, 4)
+    )
+    val minPlayersValidationError = stringResource(id = R.string.player_setup_validation_min_one)
     var playerCount by remember { mutableIntStateOf(2) }
     var playerNames by remember { mutableStateOf(defaultPlayerNames) }
     var playerSetupError by remember { mutableStateOf<String?>(null) }
@@ -56,6 +63,12 @@ private fun MillionaireTvRoot() {
     }
 
     val playerSetupState = PlayerSetupUiState(
+        title = stringResource(id = R.string.player_setup_title),
+        playerNameLabels = List(playerCount) { index ->
+            stringResource(id = R.string.player_setup_player_label, index + 1)
+        },
+        backButtonLabel = stringResource(id = R.string.player_setup_back),
+        startButtonLabel = stringResource(id = R.string.player_setup_start),
         playerCount = playerCount,
         names = playerNames,
         validationError = playerSetupError
@@ -76,8 +89,8 @@ private fun MillionaireTvRoot() {
         composable(AppRoutes.HOME) {
             HomeScreen(
                 state = HomeUiState(
-                    title = "Miljonaren TV",
-                    primaryActionLabel = "Starta spel"
+                    title = stringResource(id = R.string.app_name),
+                    primaryActionLabel = stringResource(id = R.string.home_start_game)
                 ),
                 onStartGame = {
                     resetPlayerSetupForm()
@@ -101,11 +114,11 @@ private fun MillionaireTvRoot() {
                 },
                 onStartGame = {
                     val selectedNames = playerNames.take(playerCount).mapIndexed { index, name ->
-                        name.trim().ifBlank { "Spelare ${index + 1}" }
+                        name.trim().ifBlank { defaultPlayerNames[index] }
                     }
 
                     if (selectedNames.isEmpty()) {
-                        playerSetupError = "Minst en spelare kravs"
+                        playerSetupError = minPlayersValidationError
                         return@PlayerSetupScreen
                     }
 
@@ -129,20 +142,40 @@ private fun MillionaireTvRoot() {
             val activeSession = uiState.session
             val activeQuestion = uiState.currentQuestion
             if (activeSession == null || activeQuestion == null) {
-                Text(text = "Ingen aktiv omgang")
+                Text(text = stringResource(id = R.string.gameplay_empty_state))
             } else {
+                val answerFeedback = when (uiState.answerFeedback) {
+                    AnswerFeedback.CORRECT -> stringResource(id = R.string.gameplay_feedback_correct)
+                    AnswerFeedback.WRONG -> stringResource(id = R.string.gameplay_feedback_wrong)
+                    null -> null
+                }
+
                 val gameplayState = GameplayUiState(
-                    currentRound = activeSession.currentRound,
-                    maxRounds = activeSession.maxRounds,
-                    activePlayerName = activeSession.activePlayer.name,
-                    questionText = activeQuestion.textSv,
+                    roundLabel = stringResource(
+                        id = R.string.gameplay_round,
+                        activeSession.currentRound,
+                        activeSession.maxRounds
+                    ),
+                    turnLabel = stringResource(
+                        id = R.string.gameplay_turn,
+                        activeSession.activePlayer.name
+                    ),
+                    questionLabel = stringResource(
+                        id = R.string.gameplay_question,
+                        activeQuestion.textSv
+                    ),
                     options = activeQuestion.options.map { option ->
                         GameplayOptionUiState(
                             id = option.id,
-                            text = option.textSv
+                            text = option.textSv,
+                            displayText = stringResource(
+                                id = R.string.gameplay_option,
+                                option.id,
+                                option.textSv
+                            )
                         )
                     },
-                    answerFeedback = uiState.answerFeedback,
+                    answerFeedback = answerFeedback,
                     answerLocked = uiState.answerLocked
                 )
 
@@ -158,16 +191,28 @@ private fun MillionaireTvRoot() {
         composable(AppRoutes.RESULTS) {
             val gameResult = uiState.result
             if (gameResult == null) {
-                Text(text = "Inget resultat")
+                Text(text = stringResource(id = R.string.results_empty_state))
             } else {
                 val resultsState = ResultsUiState(
+                    title = stringResource(id = R.string.results_title),
                     isTie = gameResult.isTie,
-                    winnerName = gameResult.winner?.name,
+                    tieLabel = stringResource(id = R.string.results_tie),
+                    winnerLabel = stringResource(
+                        id = R.string.results_winner,
+                        gameResult.winner?.name ?: "-"
+                    ),
+                    restartLabel = stringResource(id = R.string.results_restart),
                     players = gameResult.rankedPlayers.mapIndexed { index, player ->
                         ResultsPlayerUiState(
                             placement = index + 1,
                             name = player.name,
-                            score = player.score
+                            score = player.score,
+                            rowLabel = stringResource(
+                                id = R.string.results_score_row,
+                                index + 1,
+                                player.name,
+                                player.score
+                            )
                         )
                     }
                 )

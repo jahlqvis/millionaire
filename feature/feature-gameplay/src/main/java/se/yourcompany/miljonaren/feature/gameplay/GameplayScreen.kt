@@ -13,14 +13,14 @@ import androidx.compose.ui.unit.dp
 
 data class GameplayOptionUiState(
     val id: String,
-    val text: String
+    val text: String,
+    val displayText: String
 )
 
 data class GameplayUiState(
-    val currentRound: Int,
-    val maxRounds: Int,
-    val activePlayerName: String,
-    val questionText: String,
+    val roundLabel: String,
+    val turnLabel: String,
+    val questionLabel: String,
     val options: List<GameplayOptionUiState>,
     val answerFeedback: String?,
     val answerLocked: Boolean
@@ -37,9 +37,9 @@ fun GameplayScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(text = "Runda ${state.currentRound} av ${state.maxRounds}")
-        Text(text = "Tur: ${state.activePlayerName}")
-        Text(text = "Fraga: ${state.questionText}")
+        Text(text = state.roundLabel)
+        Text(text = state.turnLabel)
+        Text(text = state.questionLabel)
 
         state.options.forEach { option ->
             Button(
@@ -47,7 +47,7 @@ fun GameplayScreen(
                 enabled = !state.answerLocked,
                 onClick = { onAnswerSelected(option.id) }
             ) {
-                Text(text = "${option.id}: ${option.text}")
+                Text(text = option.displayText)
             }
         }
 

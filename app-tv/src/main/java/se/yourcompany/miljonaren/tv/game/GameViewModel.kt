@@ -68,7 +68,11 @@ class GameViewModel(
             it.copy(
                 session = evaluated.updatedSession,
                 currentQuestion = activeQuestion,
-                answerFeedback = if (evaluated.isCorrect) "Ratt svar!" else "Fel svar",
+                answerFeedback = if (evaluated.isCorrect) {
+                    AnswerFeedback.CORRECT
+                } else {
+                    AnswerFeedback.WRONG
+                },
                 answerLocked = true
             )
         }

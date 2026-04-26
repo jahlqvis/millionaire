@@ -15,6 +15,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 data class PlayerSetupUiState(
+    val title: String,
+    val playerNameLabels: List<String>,
+    val backButtonLabel: String,
+    val startButtonLabel: String,
     val playerCount: Int,
     val names: List<String>,
     val validationError: String?
@@ -34,7 +38,7 @@ fun PlayerSetupScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(text = "Välj antal spelare")
+        Text(text = state.title)
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             (1..4).forEach { count ->
@@ -49,7 +53,7 @@ fun PlayerSetupScreen(
                 modifier = Modifier.fillMaxWidth(),
                 value = state.names[index],
                 onValueChange = { onPlayerNameChanged(index, it) },
-                label = { Text("Spelare ${index + 1}") },
+                label = { Text(state.playerNameLabels[index]) },
                 singleLine = true
             )
         }
@@ -63,10 +67,10 @@ fun PlayerSetupScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Button(onClick = onBack) {
-                Text(text = "Tillbaka")
+                Text(text = state.backButtonLabel)
             }
             Button(onClick = onStartGame) {
-                Text(text = "Starta omgang")
+                Text(text = state.startButtonLabel)
             }
         }
     }
