@@ -50,12 +50,13 @@ android {
 dependencies {
     implementation(project(":core:core-ui"))
     implementation(project(":core:core-navigation"))
+    implementation(project(":data:data-repository"))
+    implementation(project(":domain:domain-model"))
+    implementation(project(":domain:domain-usecase"))
     implementation(project(":feature:feature-home"))
     implementation(project(":feature:feature-player-setup"))
     implementation(project(":feature:feature-gameplay"))
     implementation(project(":feature:feature-results"))
-    implementation(project(":feature:feature-history"))
-    implementation(project(":feature:feature-settings"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -63,6 +64,7 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.tv.material)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.hilt.android)

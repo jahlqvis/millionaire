@@ -7,6 +7,7 @@ kotlin {
 }
 
 dependencies {
+    implementation(project(":data:data-local-content"))
     implementation(project(":domain:domain-model"))
     implementation(project(":domain:domain-usecase"))
 }
