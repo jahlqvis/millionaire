@@ -10,17 +10,25 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import se.yourcompany.miljonaren.domain.model.Player
-import se.yourcompany.miljonaren.domain.model.Question
+
+data class GameplayOptionUiState(
+    val id: String,
+    val text: String
+)
+
+data class GameplayUiState(
+    val currentRound: Int,
+    val maxRounds: Int,
+    val activePlayerName: String,
+    val questionText: String,
+    val options: List<GameplayOptionUiState>,
+    val answerFeedback: String?,
+    val answerLocked: Boolean
+)
 
 @Composable
 fun GameplayScreen(
-    activePlayer: Player,
-    currentRound: Int,
-    maxRounds: Int,
-    question: Question,
-    answerFeedback: String?,
-    answerLocked: Boolean,
+    state: GameplayUiState,
     onAnswerSelected: (String) -> Unit
 ) {
     Column(
@@ -29,22 +37,22 @@ fun GameplayScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(text = "Runda $currentRound av $maxRounds")
-        Text(text = "Tur: ${activePlayer.name}")
-        Text(text = "Fraga: ${question.textSv}")
+        Text(text = "Runda ${state.currentRound} av ${state.maxRounds}")
+        Text(text = "Tur: ${state.activePlayerName}")
+        Text(text = "Fraga: ${state.questionText}")
 
-        question.options.forEach { option ->
+        state.options.forEach { option ->
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !answerLocked,
+                enabled = !state.answerLocked,
                 onClick = { onAnswerSelected(option.id) }
             ) {
-                Text(text = "${option.id}: ${option.textSv}")
+                Text(text = "${option.id}: ${option.text}")
             }
         }
 
-        if (answerFeedback != null) {
-            Text(text = answerFeedback)
+        if (state.answerFeedback != null) {
+            Text(text = state.answerFeedback)
         }
     }
 }

@@ -9,11 +9,22 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import se.yourcompany.miljonaren.domain.model.GameResult
+
+data class ResultsPlayerUiState(
+    val placement: Int,
+    val name: String,
+    val score: Int
+)
+
+data class ResultsUiState(
+    val isTie: Boolean,
+    val winnerName: String?,
+    val players: List<ResultsPlayerUiState>
+)
 
 @Composable
 fun ResultsScreen(
-    result: GameResult,
+    state: ResultsUiState,
     onRestart: () -> Unit
 ) {
     Column(
@@ -23,14 +34,14 @@ fun ResultsScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(text = "Resultat")
-        if (result.isTie) {
+        if (state.isTie) {
             Text(text = "Oavgjort")
         } else {
-            Text(text = "Vinnare: ${result.winner?.name ?: "-"}")
+            Text(text = "Vinnare: ${state.winnerName ?: "-"}")
         }
 
-        result.rankedPlayers.forEachIndexed { index, player ->
-            Text(text = "${index + 1}. ${player.name} - ${player.score} poang")
+        state.players.forEach { player ->
+            Text(text = "${player.placement}. ${player.name} - ${player.score} poang")
         }
 
         Button(onClick = onRestart) {

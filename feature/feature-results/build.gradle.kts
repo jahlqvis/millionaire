@@ -32,7 +32,6 @@ android {
 dependencies {
     implementation(project(":core:core-ui"))
     implementation(project(":core:core-navigation"))
-    implementation(project(":domain:domain-model"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

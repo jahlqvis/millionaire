@@ -9,8 +9,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
+data class HomeUiState(
+    val title: String,
+    val primaryActionLabel: String
+)
+
 @Composable
 fun HomeScreen(
+    state: HomeUiState,
     onStartGame: () -> Unit
 ) {
     Column(
@@ -18,9 +24,9 @@ fun HomeScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "Miljonaren TV")
+        Text(text = state.title)
         Button(onClick = onStartGame) {
-            Text("Starta spel")
+            Text(state.primaryActionLabel)
         }
     }
 }
