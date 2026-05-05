@@ -13,18 +13,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import se.yourcompany.miljonaren.core.ui.TvPrimaryButton
 import se.yourcompany.miljonaren.core.ui.TvScreenScaffold
+import se.yourcompany.miljonaren.core.ui.TvSecondaryButton
 import se.yourcompany.miljonaren.core.ui.TvTheme
 
 data class HomeUiState(
     val title: String,
     val subtitle: String,
-    val primaryActionLabel: String
+    val primaryActionLabel: String,
+    val historyActionLabel: String
 )
 
 @Composable
 fun HomeScreen(
     state: HomeUiState,
-    onStartGame: () -> Unit
+    onStartGame: () -> Unit,
+    onOpenHistory: () -> Unit
 ) {
     TvScreenScaffold {
         Column(
@@ -46,6 +49,11 @@ fun HomeScreen(
             TvPrimaryButton(
                 label = state.primaryActionLabel,
                 onClick = onStartGame,
+                modifier = Modifier.fillMaxWidth()
+            )
+            TvSecondaryButton(
+                label = state.historyActionLabel,
+                onClick = onOpenHistory,
                 modifier = Modifier.fillMaxWidth()
             )
         }

@@ -9,11 +9,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import se.yourcompany.miljonaren.data.repository.LocalQuestionRepository
+import se.yourcompany.miljonaren.domain.model.GameResult
+import se.yourcompany.miljonaren.domain.model.GameSession
 import se.yourcompany.miljonaren.domain.model.GameStatus
 import se.yourcompany.miljonaren.domain.usecase.ApplyFiftyFiftyUseCase
 import se.yourcompany.miljonaren.domain.usecase.AdvanceTurnUseCase
 import se.yourcompany.miljonaren.domain.usecase.FinishGameUseCase
 import se.yourcompany.miljonaren.domain.usecase.GetNextQuestionUseCase
+import se.yourcompany.miljonaren.domain.usecase.NoOpGameHistoryRepository
+import se.yourcompany.miljonaren.domain.usecase.SaveCompletedGameUseCase
 import se.yourcompany.miljonaren.domain.usecase.StartGameUseCase
 import se.yourcompany.miljonaren.domain.usecase.SubmitAnswerUseCase
 
@@ -25,6 +29,8 @@ class GameViewModel(
     private val submitAnswerUseCase: SubmitAnswerUseCase = SubmitAnswerUseCase(),
     private val advanceTurnUseCase: AdvanceTurnUseCase = AdvanceTurnUseCase(),
     private val finishGameUseCase: FinishGameUseCase = FinishGameUseCase(),
+    private val saveCompletedGameUseCase: SaveCompletedGameUseCase =
+        SaveCompletedGameUseCase(NoOpGameHistoryRepository()),
     private val answerRevealDelayMs: Long = 1200L
 ) : ViewModel() {
 
@@ -36,10 +42,12 @@ class GameViewModel(
         val next = getNextQuestionUseCase(startedSession)
 
         if (next.question == null) {
+            val gameResult = finishGameUseCase(next.updatedSession)
             _uiState.value = GameUiState(
                 session = next.updatedSession,
-                result = finishGameUseCase(next.updatedSession)
+                result = gameResult
             )
+            persistCompletedGame(next.updatedSession, gameResult)
             return
         }
 
@@ -106,21 +114,25 @@ class GameViewModel(
             val progressed = advanceTurnUseCase(evaluated.updatedSession)
 
             if (progressed.status == GameStatus.FINISHED) {
+                val gameResult = finishGameUseCase(progressed)
                 _uiState.value = GameUiState(
                     session = progressed,
                     remainingOptionIds = null,
-                    result = finishGameUseCase(progressed)
+                    result = gameResult
                 )
+                persistCompletedGame(progressed, gameResult)
                 return@launch
             }
 
             val next = getNextQuestionUseCase(progressed)
             if (next.question == null || next.updatedSession.status == GameStatus.FINISHED) {
+                val gameResult = finishGameUseCase(next.updatedSession)
                 _uiState.value = GameUiState(
                     session = next.updatedSession,
                     remainingOptionIds = null,
-                    result = finishGameUseCase(next.updatedSession)
+                    result = gameResult
                 )
+                persistCompletedGame(next.updatedSession, gameResult)
                 return@launch
             }
 
@@ -137,5 +149,17 @@ class GameViewModel(
 
     fun restartGame() {
         _uiState.value = GameUiState()
+    }
+
+    private fun persistCompletedGame(
+        session: GameSession,
+        result: GameResult
+    ) {
+        viewModelScope.launch {
+            saveCompletedGameUseCase(
+                session = session,
+                result = result
+            )
+        }
     }
 }

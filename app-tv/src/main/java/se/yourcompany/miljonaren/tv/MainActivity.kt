@@ -1,6 +1,8 @@
 package se.yourcompany.miljonaren.tv
 
 import android.os.Bundle
+import java.text.DateFormat
+import java.util.Date
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.Text
@@ -12,6 +14,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -22,6 +25,10 @@ import se.yourcompany.miljonaren.core.navigation.AppRoutes
 import se.yourcompany.miljonaren.feature.gameplay.GameplayOptionUiState
 import se.yourcompany.miljonaren.feature.gameplay.GameplayScreen
 import se.yourcompany.miljonaren.feature.gameplay.GameplayUiState
+import se.yourcompany.miljonaren.feature.history.HistoryGameItemUiState
+import se.yourcompany.miljonaren.feature.history.HistoryPlayerItemUiState
+import se.yourcompany.miljonaren.feature.history.HistoryScreen
+import se.yourcompany.miljonaren.feature.history.HistoryUiState
 import se.yourcompany.miljonaren.feature.home.HomeUiState
 import se.yourcompany.miljonaren.feature.home.HomeScreen
 import se.yourcompany.miljonaren.feature.playersetup.PlayerSetupUiState
@@ -31,6 +38,9 @@ import se.yourcompany.miljonaren.feature.results.ResultsScreen
 import se.yourcompany.miljonaren.feature.results.ResultsUiState
 import se.yourcompany.miljonaren.tv.game.AnswerFeedback
 import se.yourcompany.miljonaren.tv.game.GameViewModel
+import se.yourcompany.miljonaren.tv.game.GameViewModelFactory
+import se.yourcompany.miljonaren.tv.history.HistoryViewModel
+import se.yourcompany.miljonaren.tv.history.HistoryViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,8 +54,17 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun MillionaireTvRoot() {
     val navController = rememberNavController()
-    val gameViewModel: GameViewModel = viewModel()
+    val context = LocalContext.current
+    val gameViewModelFactory = remember(context) {
+        GameViewModelFactory(context.applicationContext)
+    }
+    val historyViewModelFactory = remember(context) {
+        HistoryViewModelFactory(context.applicationContext)
+    }
+    val gameViewModel: GameViewModel = viewModel(factory = gameViewModelFactory)
+    val historyViewModel: HistoryViewModel = viewModel(factory = historyViewModelFactory)
     val uiState by gameViewModel.uiState.collectAsState()
+    val historyState by historyViewModel.state.collectAsState()
     val defaultPlayerNames = listOf(
         stringResource(id = R.string.default_player_name, 1),
         stringResource(id = R.string.default_player_name, 2),
@@ -92,13 +111,74 @@ private fun MillionaireTvRoot() {
                 state = HomeUiState(
                     title = stringResource(id = R.string.app_name),
                     subtitle = stringResource(id = R.string.home_subtitle),
-                    primaryActionLabel = stringResource(id = R.string.home_start_game)
+                    primaryActionLabel = stringResource(id = R.string.home_start_game),
+                    historyActionLabel = stringResource(id = R.string.home_history)
                 ),
                 onStartGame = {
                     resetPlayerSetupForm()
                     navController.navigate(AppRoutes.PLAYER_SETUP) {
                         launchSingleTop = true
                     }
+                },
+                onOpenHistory = {
+                    navController.navigate(AppRoutes.HISTORY) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+
+        composable(AppRoutes.HISTORY) {
+            LaunchedEffect(Unit) {
+                historyViewModel.loadHistory()
+            }
+
+            val dateFormat = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+            val historyUiState = HistoryUiState(
+                title = stringResource(id = R.string.history_title),
+                backLabel = stringResource(id = R.string.history_back),
+                loadingLabel = stringResource(id = R.string.history_loading),
+                emptyLabel = stringResource(id = R.string.history_empty_state),
+                isLoading = historyState.isLoading,
+                games = historyState.games.map { game ->
+                    val headline = if (game.isTie) {
+                        stringResource(id = R.string.history_tie)
+                    } else {
+                        stringResource(
+                            id = R.string.history_winner,
+                            game.winnerName ?: "-"
+                        )
+                    }
+                    val details = stringResource(
+                        id = R.string.history_players_rounds,
+                        game.totalPlayers,
+                        game.totalRounds,
+                        dateFormat.format(Date(game.completedAtEpochMs))
+                    )
+                    HistoryGameItemUiState(
+                        sessionId = game.sessionId,
+                        title = headline,
+                        subtitle = details,
+                        isSelected = game.sessionId == historyState.selectedSessionId
+                    )
+                },
+                selectedResults = historyState.selectedResults.map { result ->
+                    HistoryPlayerItemUiState(
+                        rowLabel = stringResource(
+                            id = R.string.history_result_row,
+                            result.placement,
+                            result.playerName,
+                            result.score
+                        )
+                    )
+                }
+            )
+
+            HistoryScreen(
+                state = historyUiState,
+                onBack = { navController.popBackStack() },
+                onSelectGame = { sessionId ->
+                    historyViewModel.selectSession(sessionId)
                 }
             )
         }

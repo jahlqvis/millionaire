@@ -13,12 +13,18 @@ import org.junit.Rule
 import org.junit.Test
 import se.yourcompany.miljonaren.domain.model.AnswerOption
 import se.yourcompany.miljonaren.domain.model.Difficulty
+import se.yourcompany.miljonaren.domain.model.GameResult
+import se.yourcompany.miljonaren.domain.model.GameSession
+import se.yourcompany.miljonaren.domain.model.GameHistoryEntry
 import se.yourcompany.miljonaren.domain.model.Question
+import se.yourcompany.miljonaren.domain.model.PlayerHistoryResult
 import se.yourcompany.miljonaren.domain.usecase.ApplyFiftyFiftyUseCase
 import se.yourcompany.miljonaren.domain.usecase.AdvanceTurnUseCase
 import se.yourcompany.miljonaren.domain.usecase.FinishGameUseCase
+import se.yourcompany.miljonaren.domain.usecase.GameHistoryRepository
 import se.yourcompany.miljonaren.domain.usecase.GetNextQuestionUseCase
 import se.yourcompany.miljonaren.domain.usecase.QuestionRepository
+import se.yourcompany.miljonaren.domain.usecase.SaveCompletedGameUseCase
 import se.yourcompany.miljonaren.domain.usecase.StartGameUseCase
 import se.yourcompany.miljonaren.domain.usecase.SubmitAnswerUseCase
 
@@ -132,7 +138,12 @@ class GameViewModelTest {
 
     @Test
     fun finalRoundTransitionsToResults() = runTest {
-        val viewModel = createViewModel(questionCount = 5, answerRevealDelayMs = 0L)
+        val fakeHistoryRepository = FakeGameHistoryRepository()
+        val viewModel = createViewModel(
+            questionCount = 5,
+            answerRevealDelayMs = 0L,
+            gameHistoryRepository = fakeHistoryRepository
+        )
         viewModel.startGame(listOf("Anna"))
 
         repeat(5) {
@@ -144,6 +155,7 @@ class GameViewModelTest {
         assertNotNull(state.result)
         assertNull(state.currentQuestion)
         assertEquals(5, state.result?.winner?.score)
+        assertEquals(1, fakeHistoryRepository.savedSessionIds.size)
     }
 
     @Test
@@ -164,7 +176,8 @@ class GameViewModelTest {
 
     private fun createViewModel(
         questionCount: Int,
-        answerRevealDelayMs: Long = 0L
+        answerRevealDelayMs: Long = 0L,
+        gameHistoryRepository: GameHistoryRepository = FakeGameHistoryRepository()
     ): GameViewModel {
         val repository = FakeQuestionRepository(questionCount)
         return GameViewModel(
@@ -174,6 +187,7 @@ class GameViewModelTest {
             submitAnswerUseCase = SubmitAnswerUseCase(),
             advanceTurnUseCase = AdvanceTurnUseCase(),
             finishGameUseCase = FinishGameUseCase(),
+            saveCompletedGameUseCase = SaveCompletedGameUseCase(gameHistoryRepository),
             answerRevealDelayMs = answerRevealDelayMs
         )
     }
@@ -198,5 +212,21 @@ class GameViewModelTest {
         override fun getNextUnusedQuestion(askedIds: Set<String>): Question? {
             return questions.firstOrNull { it.id !in askedIds }
         }
+    }
+
+    private class FakeGameHistoryRepository : GameHistoryRepository {
+        val savedSessionIds = mutableListOf<String>()
+
+        override suspend fun saveCompletedGame(
+            session: GameSession,
+            result: GameResult,
+            completedAtEpochMs: Long
+        ) {
+            savedSessionIds += session.id
+        }
+
+        override suspend fun getRecentGames(): List<GameHistoryEntry> = emptyList()
+
+        override suspend fun getResultsForSession(sessionId: String): List<PlayerHistoryResult> = emptyList()
     }
 }

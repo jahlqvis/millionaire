@@ -4,6 +4,7 @@
     <string name="placeholder_start">Tryck OK för att starta</string>
 
     <string name="home_start_game">Starta spel</string>
+    <string name="home_history">Historik</string>
     <string name="home_subtitle">Svenskt frågespel för TV</string>
 
     <string name="player_setup_title">Välj antal spelare</string>
@@ -27,6 +28,15 @@
     <string name="results_score_row">%1$d. %2$s - %3$d poäng</string>
     <string name="results_restart">Till startsidan</string>
     <string name="results_empty_state">Inget resultat</string>
+
+    <string name="history_title">Spelhistorik</string>
+    <string name="history_back">Tillbaka</string>
+    <string name="history_loading">Laddar historik...</string>
+    <string name="history_empty_state">Inga tidigare spel hittades</string>
+    <string name="history_tie">Oavgjort</string>
+    <string name="history_winner">Vinnare: %1$s</string>
+    <string name="history_players_rounds">%1$d spelare • %2$d rundor • %3$s</string>
+    <string name="history_result_row">%1$d. %2$s - %3$d poäng</string>
 
     <string name="default_player_name">Spelare %1$d</string>
 </resources>

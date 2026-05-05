@@ -54,6 +54,7 @@ dependencies {
     implementation(project(":domain:domain-model"))
     implementation(project(":domain:domain-usecase"))
     implementation(project(":feature:feature-home"))
+    implementation(project(":feature:feature-history"))
     implementation(project(":feature:feature-player-setup"))
     implementation(project(":feature:feature-gameplay"))
     implementation(project(":feature:feature-results"))
