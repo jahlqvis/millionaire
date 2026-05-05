@@ -3,12 +3,14 @@ package se.yourcompany.miljonaren.domain.usecase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import se.yourcompany.miljonaren.domain.model.AnswerOption
 import se.yourcompany.miljonaren.domain.model.Difficulty
 import se.yourcompany.miljonaren.domain.model.GameSession
 import se.yourcompany.miljonaren.domain.model.GameStatus
+import se.yourcompany.miljonaren.domain.model.LifelineType
 import se.yourcompany.miljonaren.domain.model.Player
 import se.yourcompany.miljonaren.domain.model.Question
 
@@ -91,6 +93,60 @@ class GameUseCasesTest {
         assertEquals(GameStatus.FINISHED, second.updatedSession.status)
     }
 
+    @Test
+    fun applyFiftyFifty_keepsCorrectAnswerAndOneIncorrectOption() {
+        val useCase = ApplyFiftyFiftyUseCase()
+        val question = sampleQuestion(id = "q1", correctId = "C")
+        val session = sampleSession(currentQuestionId = question.id)
+
+        val result = useCase(session, question)
+
+        assertEquals(setOf("A", "C"), result.remainingOptionIds)
+        assertTrue(
+            result.updatedSession.hasUsedLifeline(
+                playerId = session.activePlayer.id,
+                lifelineType = LifelineType.FIFTY_FIFTY
+            )
+        )
+    }
+
+    @Test
+    fun applyFiftyFifty_rejectsRepeatedUsageForSamePlayer() {
+        val useCase = ApplyFiftyFiftyUseCase()
+        val question = sampleQuestion(id = "q1", correctId = "A")
+        val session = sampleSession(currentQuestionId = question.id)
+            .markLifelineUsed("p1", LifelineType.FIFTY_FIFTY)
+
+        assertThrows(IllegalArgumentException::class.java) {
+            useCase(session, question)
+        }
+    }
+
+    @Test
+    fun applyFiftyFifty_rejectsFinishedGames() {
+        val useCase = ApplyFiftyFiftyUseCase()
+        val question = sampleQuestion(id = "q1", correctId = "A")
+        val session = sampleSession(
+            currentQuestionId = question.id,
+            status = GameStatus.FINISHED
+        )
+
+        assertThrows(IllegalArgumentException::class.java) {
+            useCase(session, question)
+        }
+    }
+
+    @Test
+    fun applyFiftyFifty_rejectsNonActiveQuestion() {
+        val useCase = ApplyFiftyFiftyUseCase()
+        val question = sampleQuestion(id = "q1", correctId = "A")
+        val session = sampleSession(currentQuestionId = "other-question")
+
+        assertThrows(IllegalArgumentException::class.java) {
+            useCase(session, question)
+        }
+    }
+
     private fun sampleSession(
         players: List<Player> = listOf(
             Player(id = "p1", name = "Anna", score = 0),
@@ -99,6 +155,7 @@ class GameUseCasesTest {
         currentPlayerIndex: Int = 0,
         currentRound: Int = 1,
         askedQuestionIds: Set<String> = emptySet(),
+        currentQuestionId: String? = null,
         status: GameStatus = GameStatus.IN_PROGRESS
     ): GameSession = GameSession(
         id = "session-1",
@@ -107,7 +164,8 @@ class GameUseCasesTest {
         currentRound = currentRound,
         maxRounds = 5,
         askedQuestionIds = askedQuestionIds,
-        currentQuestionId = null,
+        currentQuestionId = currentQuestionId,
+        usedLifelinesByPlayer = emptyMap(),
         status = status
     )
 

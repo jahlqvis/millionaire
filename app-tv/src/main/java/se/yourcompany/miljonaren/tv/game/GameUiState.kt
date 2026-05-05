@@ -12,6 +12,7 @@ enum class AnswerFeedback {
 data class GameUiState(
     val session: GameSession? = null,
     val currentQuestion: Question? = null,
+    val remainingOptionIds: Set<String>? = null,
     val answerFeedback: AnswerFeedback? = null,
     val answerLocked: Boolean = false,
     val result: GameResult? = null

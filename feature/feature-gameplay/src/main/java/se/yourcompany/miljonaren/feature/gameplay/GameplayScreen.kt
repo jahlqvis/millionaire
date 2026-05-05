@@ -15,16 +15,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import se.yourcompany.miljonaren.core.ui.TvOptionCard
 import se.yourcompany.miljonaren.core.ui.TvScreenScaffold
+import se.yourcompany.miljonaren.core.ui.TvSecondaryButton
 import se.yourcompany.miljonaren.core.ui.TvTheme
 
 data class GameplayOptionUiState(
     val id: String,
-    val displayText: String
+    val displayText: String,
+    val isEnabled: Boolean
 )
 
 data class GameplayUiState(
     val roundLabel: String,
     val turnLabel: String,
+    val fiftyFiftyLabel: String,
+    val isFiftyFiftyAvailable: Boolean,
     val questionLabel: String,
     val options: List<GameplayOptionUiState>,
     val answerFeedback: String?,
@@ -35,6 +39,7 @@ data class GameplayUiState(
 @Composable
 fun GameplayScreen(
     state: GameplayUiState,
+    onUseFiftyFifty: () -> Unit,
     onAnswerSelected: (String) -> Unit
 ) {
     TvScreenScaffold {
@@ -57,6 +62,14 @@ fun GameplayScreen(
                 fontWeight = FontWeight.SemiBold
             )
 
+            TvSecondaryButton(
+                label = state.fiftyFiftyLabel,
+                onClick = onUseFiftyFifty,
+                enabled = state.isFiftyFiftyAvailable,
+                selected = !state.isFiftyFiftyAvailable,
+                modifier = Modifier.widthIn(max = 220.dp)
+            )
+
             Surface(
                 color = TvTheme.Surface,
                 shape = RoundedCornerShape(18.dp),
@@ -77,7 +90,7 @@ fun GameplayScreen(
                 TvOptionCard(
                     label = option.displayText,
                     onClick = { onAnswerSelected(option.id) },
-                    enabled = !state.answerLocked
+                    enabled = !state.answerLocked && option.isEnabled
                 )
             }
 

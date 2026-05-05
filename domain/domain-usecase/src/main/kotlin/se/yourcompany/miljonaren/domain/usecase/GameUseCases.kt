@@ -5,6 +5,7 @@ import se.yourcompany.miljonaren.domain.model.AnswerEvaluation
 import se.yourcompany.miljonaren.domain.model.GameResult
 import se.yourcompany.miljonaren.domain.model.GameSession
 import se.yourcompany.miljonaren.domain.model.GameStatus
+import se.yourcompany.miljonaren.domain.model.LifelineType
 import se.yourcompany.miljonaren.domain.model.Player
 import se.yourcompany.miljonaren.domain.model.Question
 
@@ -19,6 +20,11 @@ interface QuestionRepository {
 data class NextQuestionResult(
     val updatedSession: GameSession,
     val question: Question?
+)
+
+data class FiftyFiftyResult(
+    val updatedSession: GameSession,
+    val remainingOptionIds: Set<String>
 )
 
 class StartGameUseCase {
@@ -43,6 +49,7 @@ class StartGameUseCase {
             maxRounds = SPRINT_ONE_MAX_ROUNDS,
             askedQuestionIds = emptySet(),
             currentQuestionId = null,
+            usedLifelinesByPlayer = emptyMap(),
             status = GameStatus.IN_PROGRESS
         )
     }
@@ -67,6 +74,44 @@ class GetNextQuestionUseCase(
                 currentQuestionId = nextQuestion.id
             ),
             question = nextQuestion
+        )
+    }
+}
+
+class ApplyFiftyFiftyUseCase {
+    operator fun invoke(
+        session: GameSession,
+        question: Question
+    ): FiftyFiftyResult {
+        require(session.status == GameStatus.IN_PROGRESS) {
+            "Cannot use lifelines when the game is finished."
+        }
+        require(session.currentQuestionId == question.id) {
+            "50/50 can only be used on the active question."
+        }
+        require(!session.hasUsedLifeline(session.activePlayer.id, LifelineType.FIFTY_FIFTY)) {
+            "50/50 has already been used by this player."
+        }
+
+        val incorrectOptionToKeep = question.options.firstOrNull { option ->
+            option.id != question.correctOptionId
+        } ?: error("Question must contain at least one incorrect option.")
+
+        val remainingOptionIds = question.options
+            .filter { option ->
+                option.id == question.correctOptionId || option.id == incorrectOptionToKeep.id
+            }
+            .map { option -> option.id }
+            .toSet()
+
+        val updatedSession = session.markLifelineUsed(
+            playerId = session.activePlayer.id,
+            lifelineType = LifelineType.FIFTY_FIFTY
+        )
+
+        return FiftyFiftyResult(
+            updatedSession = updatedSession,
+            remainingOptionIds = remainingOptionIds
         )
     }
 }

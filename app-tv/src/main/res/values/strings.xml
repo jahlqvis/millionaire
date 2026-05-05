@@ -16,6 +16,7 @@
     <string name="gameplay_turn">Tur: %1$s</string>
     <string name="gameplay_question">Fråga: %1$s</string>
     <string name="gameplay_option">%1$s: %2$s</string>
+    <string name="gameplay_lifeline_fifty_fifty">50/50</string>
     <string name="gameplay_feedback_correct">Rätt svar!</string>
     <string name="gameplay_feedback_wrong">Fel svar</string>
     <string name="gameplay_empty_state">Ingen aktiv omgång</string>

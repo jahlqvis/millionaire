@@ -14,6 +14,7 @@ import org.junit.Test
 import se.yourcompany.miljonaren.domain.model.AnswerOption
 import se.yourcompany.miljonaren.domain.model.Difficulty
 import se.yourcompany.miljonaren.domain.model.Question
+import se.yourcompany.miljonaren.domain.usecase.ApplyFiftyFiftyUseCase
 import se.yourcompany.miljonaren.domain.usecase.AdvanceTurnUseCase
 import se.yourcompany.miljonaren.domain.usecase.FinishGameUseCase
 import se.yourcompany.miljonaren.domain.usecase.GetNextQuestionUseCase
@@ -38,6 +39,7 @@ class GameViewModelTest {
         assertEquals("Fråga 1", state.currentQuestion?.textSv)
         assertNull(state.result)
         assertFalse(state.answerLocked)
+        assertNull(state.remainingOptionIds)
     }
 
     @Test
@@ -59,6 +61,7 @@ class GameViewModelTest {
         assertNull(advanced.answerFeedback)
         assertFalse(advanced.answerLocked)
         assertEquals("Bengt", advanced.session?.activePlayer?.name)
+        assertNull(advanced.remainingOptionIds)
     }
 
     @Test
@@ -89,6 +92,45 @@ class GameViewModelTest {
     }
 
     @Test
+    fun useFiftyFifty_keepsOnlyTwoOptionIds() = runTest {
+        val viewModel = createViewModel(questionCount = 6)
+        viewModel.startGame(listOf("Anna", "Bengt"))
+
+        viewModel.useFiftyFifty()
+
+        val state = viewModel.uiState.value
+        assertEquals(setOf("A", "B"), state.remainingOptionIds)
+    }
+
+    @Test
+    fun useFiftyFifty_cannotBeUsedTwiceBySamePlayer() = runTest {
+        val viewModel = createViewModel(questionCount = 6)
+        viewModel.startGame(listOf("Anna", "Bengt"))
+
+        viewModel.useFiftyFifty()
+        val first = viewModel.uiState.value.remainingOptionIds
+
+        viewModel.useFiftyFifty()
+        val second = viewModel.uiState.value.remainingOptionIds
+
+        assertEquals(first, second)
+    }
+
+    @Test
+    fun useFiftyFifty_resetsOnNextQuestion() = runTest {
+        val viewModel = createViewModel(questionCount = 6, answerRevealDelayMs = 500L)
+        viewModel.startGame(listOf("Anna", "Bengt"))
+        viewModel.useFiftyFifty()
+        assertNotNull(viewModel.uiState.value.remainingOptionIds)
+
+        viewModel.submitAnswer("A")
+        advanceTimeBy(500L)
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.remainingOptionIds)
+    }
+
+    @Test
     fun finalRoundTransitionsToResults() = runTest {
         val viewModel = createViewModel(questionCount = 5, answerRevealDelayMs = 0L)
         viewModel.startGame(listOf("Anna"))
@@ -114,6 +156,7 @@ class GameViewModelTest {
         val state = viewModel.uiState.value
         assertNull(state.session)
         assertNull(state.currentQuestion)
+        assertNull(state.remainingOptionIds)
         assertNull(state.answerFeedback)
         assertFalse(state.answerLocked)
         assertNull(state.result)
@@ -127,6 +170,7 @@ class GameViewModelTest {
         return GameViewModel(
             startGameUseCase = StartGameUseCase(),
             getNextQuestionUseCase = GetNextQuestionUseCase(repository),
+            applyFiftyFiftyUseCase = ApplyFiftyFiftyUseCase(),
             submitAnswerUseCase = SubmitAnswerUseCase(),
             advanceTurnUseCase = AdvanceTurnUseCase(),
             finishGameUseCase = FinishGameUseCase(),

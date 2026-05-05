@@ -17,6 +17,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import se.yourcompany.miljonaren.domain.model.LifelineType
 import se.yourcompany.miljonaren.core.navigation.AppRoutes
 import se.yourcompany.miljonaren.feature.gameplay.GameplayOptionUiState
 import se.yourcompany.miljonaren.feature.gameplay.GameplayScreen
@@ -166,18 +167,26 @@ private fun MillionaireTvRoot() {
                         id = R.string.gameplay_turn,
                         activeSession.activePlayer.name
                     ),
+                    fiftyFiftyLabel = stringResource(id = R.string.gameplay_lifeline_fifty_fifty),
+                    isFiftyFiftyAvailable = !uiState.answerLocked &&
+                        !activeSession.hasUsedLifeline(
+                            playerId = activeSession.activePlayer.id,
+                            lifelineType = LifelineType.FIFTY_FIFTY
+                        ),
                     questionLabel = stringResource(
                         id = R.string.gameplay_question,
                         activeQuestion.textSv
                     ),
                     options = activeQuestion.options.map { option ->
+                        val visibleByLifeline = uiState.remainingOptionIds?.contains(option.id) ?: true
                         GameplayOptionUiState(
                             id = option.id,
                             displayText = stringResource(
                                 id = R.string.gameplay_option,
                                 option.id,
                                 option.textSv
-                            )
+                            ),
+                            isEnabled = visibleByLifeline
                         )
                     },
                     answerFeedback = answerFeedback,
@@ -187,6 +196,9 @@ private fun MillionaireTvRoot() {
 
                 GameplayScreen(
                     state = gameplayState,
+                    onUseFiftyFifty = {
+                        gameViewModel.useFiftyFifty()
+                    },
                     onAnswerSelected = { selectedOptionId ->
                         gameViewModel.submitAnswer(selectedOptionId)
                     }

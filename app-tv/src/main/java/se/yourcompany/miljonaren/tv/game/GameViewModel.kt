@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import se.yourcompany.miljonaren.data.repository.LocalQuestionRepository
 import se.yourcompany.miljonaren.domain.model.GameStatus
+import se.yourcompany.miljonaren.domain.usecase.ApplyFiftyFiftyUseCase
 import se.yourcompany.miljonaren.domain.usecase.AdvanceTurnUseCase
 import se.yourcompany.miljonaren.domain.usecase.FinishGameUseCase
 import se.yourcompany.miljonaren.domain.usecase.GetNextQuestionUseCase
@@ -20,6 +21,7 @@ class GameViewModel(
     private val startGameUseCase: StartGameUseCase = StartGameUseCase(),
     private val getNextQuestionUseCase: GetNextQuestionUseCase =
         GetNextQuestionUseCase(LocalQuestionRepository()),
+    private val applyFiftyFiftyUseCase: ApplyFiftyFiftyUseCase = ApplyFiftyFiftyUseCase(),
     private val submitAnswerUseCase: SubmitAnswerUseCase = SubmitAnswerUseCase(),
     private val advanceTurnUseCase: AdvanceTurnUseCase = AdvanceTurnUseCase(),
     private val finishGameUseCase: FinishGameUseCase = FinishGameUseCase(),
@@ -44,10 +46,31 @@ class GameViewModel(
         _uiState.value = GameUiState(
             session = next.updatedSession,
             currentQuestion = next.question,
+            remainingOptionIds = null,
             answerLocked = false,
             answerFeedback = null,
             result = null
         )
+    }
+
+    fun useFiftyFifty() {
+        val currentState = _uiState.value
+        val activeSession = currentState.session ?: return
+        val activeQuestion = currentState.currentQuestion ?: return
+        if (currentState.answerLocked || currentState.remainingOptionIds != null) {
+            return
+        }
+
+        val result = runCatching {
+            applyFiftyFiftyUseCase(activeSession, activeQuestion)
+        }.getOrNull() ?: return
+
+        _uiState.update {
+            it.copy(
+                session = result.updatedSession,
+                remainingOptionIds = result.remainingOptionIds
+            )
+        }
     }
 
     fun submitAnswer(selectedOptionId: String) {
@@ -85,6 +108,7 @@ class GameViewModel(
             if (progressed.status == GameStatus.FINISHED) {
                 _uiState.value = GameUiState(
                     session = progressed,
+                    remainingOptionIds = null,
                     result = finishGameUseCase(progressed)
                 )
                 return@launch
@@ -94,6 +118,7 @@ class GameViewModel(
             if (next.question == null || next.updatedSession.status == GameStatus.FINISHED) {
                 _uiState.value = GameUiState(
                     session = next.updatedSession,
+                    remainingOptionIds = null,
                     result = finishGameUseCase(next.updatedSession)
                 )
                 return@launch
@@ -102,6 +127,7 @@ class GameViewModel(
             _uiState.value = GameUiState(
                 session = next.updatedSession,
                 currentQuestion = next.question,
+                remainingOptionIds = null,
                 answerLocked = false,
                 answerFeedback = null,
                 result = null

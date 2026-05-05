@@ -6,6 +6,10 @@ data class Player(
     val score: Int = 0
 )
 
+enum class LifelineType {
+    FIFTY_FIFTY
+}
+
 data class AnswerOption(
     val id: String,
     val textSv: String
@@ -46,10 +50,22 @@ data class GameSession(
     val maxRounds: Int,
     val askedQuestionIds: Set<String>,
     val currentQuestionId: String?,
+    val usedLifelinesByPlayer: Map<String, Set<LifelineType>> = emptyMap(),
     val status: GameStatus
 ) {
     val activePlayer: Player
         get() = players[currentPlayerIndex]
+
+    fun hasUsedLifeline(playerId: String, lifelineType: LifelineType): Boolean {
+        return lifelineType in usedLifelinesByPlayer[playerId].orEmpty()
+    }
+
+    fun markLifelineUsed(playerId: String, lifelineType: LifelineType): GameSession {
+        val updatedLifelines = usedLifelinesByPlayer.toMutableMap()
+        val currentUsage = updatedLifelines[playerId].orEmpty()
+        updatedLifelines[playerId] = currentUsage + lifelineType
+        return copy(usedLifelinesByPlayer = updatedLifelines)
+    }
 }
 
 data class AnswerEvaluation(
