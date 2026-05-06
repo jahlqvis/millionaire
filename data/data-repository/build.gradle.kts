@@ -27,4 +27,7 @@ dependencies {
     implementation(project(":domain:domain-model"))
     implementation(project(":domain:domain-usecase"))
     implementation(libs.androidx.room.runtime)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
