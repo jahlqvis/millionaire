@@ -48,6 +48,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:core-audio"))
     implementation(project(":core:core-ui"))
     implementation(project(":core:core-navigation"))
     implementation(project(":data:data-repository"))

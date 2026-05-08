@@ -11,6 +11,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import se.yourcompany.miljonaren.core.audio.SoundEffect
 import se.yourcompany.miljonaren.domain.model.AnswerOption
 import se.yourcompany.miljonaren.domain.model.Difficulty
 import se.yourcompany.miljonaren.domain.model.GameResult
@@ -68,6 +69,8 @@ class GameViewModelTest {
         assertFalse(advanced.answerLocked)
         assertEquals("Bengt", advanced.session?.activePlayer?.name)
         assertNull(advanced.remainingOptionIds)
+        assertTrue(viewModel.audioEvents.replayCache.contains(SoundEffect.ANSWER_SELECTED))
+        assertTrue(viewModel.audioEvents.replayCache.contains(SoundEffect.ANSWER_CORRECT))
     }
 
     @Test
@@ -80,6 +83,8 @@ class GameViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(AnswerFeedback.WRONG, state.answerFeedback)
         assertEquals(0, state.session?.players?.first()?.score)
+        assertTrue(viewModel.audioEvents.replayCache.contains(SoundEffect.ANSWER_SELECTED))
+        assertTrue(viewModel.audioEvents.replayCache.contains(SoundEffect.ANSWER_WRONG))
     }
 
     @Test
@@ -156,6 +161,7 @@ class GameViewModelTest {
         assertNull(state.currentQuestion)
         assertEquals(5, state.result?.winner?.score)
         assertEquals(1, fakeHistoryRepository.savedSessionIds.size)
+        assertTrue(viewModel.audioEvents.replayCache.contains(SoundEffect.GAME_COMPLETE))
     }
 
     @Test

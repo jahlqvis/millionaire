@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -20,6 +21,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.flow.collectLatest
+import se.yourcompany.miljonaren.core.audio.SoundPoolGameAudioPlayer
 import se.yourcompany.miljonaren.domain.model.LifelineType
 import se.yourcompany.miljonaren.core.navigation.AppRoutes
 import se.yourcompany.miljonaren.feature.gameplay.GameplayOptionUiState
@@ -61,6 +64,9 @@ private fun MillionaireTvRoot() {
     val historyViewModelFactory = remember(context) {
         HistoryViewModelFactory(context.applicationContext)
     }
+    val audioPlayer = remember(context) {
+        SoundPoolGameAudioPlayer(context.applicationContext)
+    }
     val gameViewModel: GameViewModel = viewModel(factory = gameViewModelFactory)
     val historyViewModel: HistoryViewModel = viewModel(factory = historyViewModelFactory)
     val uiState by gameViewModel.uiState.collectAsState()
@@ -93,6 +99,18 @@ private fun MillionaireTvRoot() {
         names = playerNames,
         validationError = playerSetupError
     )
+
+    DisposableEffect(audioPlayer) {
+        onDispose {
+            audioPlayer.release()
+        }
+    }
+
+    LaunchedEffect(gameViewModel) {
+        gameViewModel.audioEvents.collectLatest { soundEffect ->
+            audioPlayer.play(soundEffect)
+        }
+    }
 
     LaunchedEffect(uiState.result) {
         if (uiState.result != null) {

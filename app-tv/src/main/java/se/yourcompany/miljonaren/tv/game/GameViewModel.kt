@@ -3,11 +3,15 @@ package se.yourcompany.miljonaren.tv.game
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import se.yourcompany.miljonaren.core.audio.SoundEffect
 import se.yourcompany.miljonaren.data.repository.LocalQuestionRepository
 import se.yourcompany.miljonaren.domain.model.GameResult
 import se.yourcompany.miljonaren.domain.model.GameSession
@@ -36,6 +40,8 @@ class GameViewModel(
 
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
+    private val _audioEvents = MutableSharedFlow<SoundEffect>(replay = 4, extraBufferCapacity = 8)
+    val audioEvents: SharedFlow<SoundEffect> = _audioEvents.asSharedFlow()
 
     fun startGame(playerNames: List<String>) {
         val startedSession = startGameUseCase(playerNames)
@@ -47,6 +53,7 @@ class GameViewModel(
                 session = next.updatedSession,
                 result = gameResult
             )
+            _audioEvents.tryEmit(SoundEffect.GAME_COMPLETE)
             persistCompletedGame(next.updatedSession, gameResult)
             return
         }
@@ -89,6 +96,8 @@ class GameViewModel(
             return
         }
 
+        _audioEvents.tryEmit(SoundEffect.ANSWER_SELECTED)
+
         val evaluated = submitAnswerUseCase(
             session = activeSession,
             question = activeQuestion,
@@ -108,6 +117,10 @@ class GameViewModel(
             )
         }
 
+        _audioEvents.tryEmit(
+            if (evaluated.isCorrect) SoundEffect.ANSWER_CORRECT else SoundEffect.ANSWER_WRONG
+        )
+
         viewModelScope.launch {
             delay(answerRevealDelayMs)
 
@@ -120,6 +133,7 @@ class GameViewModel(
                     remainingOptionIds = null,
                     result = gameResult
                 )
+                _audioEvents.tryEmit(SoundEffect.GAME_COMPLETE)
                 persistCompletedGame(progressed, gameResult)
                 return@launch
             }
@@ -132,6 +146,7 @@ class GameViewModel(
                     remainingOptionIds = null,
                     result = gameResult
                 )
+                _audioEvents.tryEmit(SoundEffect.GAME_COMPLETE)
                 persistCompletedGame(next.updatedSession, gameResult)
                 return@launch
             }
