@@ -1,24 +1,89 @@
 package se.yourcompany.miljonaren.data.repository
 
+import kotlin.random.Random
 import se.yourcompany.miljonaren.data.local.content.SwedishQuestionSeed
+import se.yourcompany.miljonaren.domain.model.Difficulty
+import se.yourcompany.miljonaren.domain.model.GameSession
 import se.yourcompany.miljonaren.domain.model.Question
 import se.yourcompany.miljonaren.domain.usecase.QuestionRepository
 
+interface QuestionUsageStore {
+    /** Completed games, oldest first; each game contains question IDs in use order. */
+    fun load(): List<List<String>>
+    fun save(games: List<List<String>>)
+}
+
+class InMemoryQuestionUsageStore : QuestionUsageStore {
+    private var games: List<List<String>> = emptyList()
+    override fun load() = games
+    override fun save(games: List<List<String>>) { this.games = games.map { it.toList() } }
+}
+
 class LocalQuestionRepository(
-    private val allQuestions: List<Question> = SwedishQuestionSeed.questions
+    private val allQuestions: List<Question> = SwedishQuestionSeed.questions,
+    private val usageStore: QuestionUsageStore = InMemoryQuestionUsageStore(),
+    private val random: Random = Random.Default
 ) : QuestionRepository {
+    private var recentGames: List<List<String>> = emptyList()
+    private val currentGame = mutableListOf<String>()
     private val lastUsed = mutableMapOf<String, Long>()
+    private val roundDifficulties = mutableMapOf<String, Difficulty>()
     private var sequence = 0L
 
-    override fun getNextUnusedQuestion(askedIds: Set<String>): Question? {
-        val question = allQuestions.firstOrNull { it.id !in askedIds }
-            ?: allQuestions.maxOfOrNull { it.difficulty.ordinal }?.let { hardest ->
-                allQuestions.filter { it.difficulty.ordinal == hardest }
-                    .minByOrNull { lastUsed[it.id] ?: Long.MIN_VALUE }
-            }
-        if (question != null) {
-            lastUsed[question.id] = sequence++
+    init { startGame() }
+
+    override fun startGame() {
+        recentGames = usageStore.load().takeLast(10)
+        currentGame.clear()
+        lastUsed.clear()
+        roundDifficulties.clear()
+        sequence = 0L
+        recentGames.flatten().forEach { lastUsed[it] = sequence++ }
+    }
+
+    override fun recordCompletedGame() {
+        if (currentGame.isEmpty()) return
+        recentGames = (recentGames + listOf(currentGame.toList())).takeLast(10)
+        usageStore.save(recentGames)
+        currentGame.clear()
+    }
+
+    override fun getNextUnusedQuestion(askedIds: Set<String>): Question? = select(askedIds, null)
+
+    override fun getNextQuestion(session: GameSession): Question? = select(session.askedQuestionIds, session)
+
+    private fun select(askedIds: Set<String>, session: GameSession?): Question? {
+        if (allQuestions.isEmpty()) return null
+        val notAsked = allQuestions.filter { it.id !in askedIds }
+        val recentIds = recentGames.flatten().toSet()
+        val fresh = notAsked.filter { it.id !in recentIds }
+        val question = if (fresh.isNotEmpty()) {
+            val balanced = if (session == null) fresh else balancedPool(fresh, session)
+            balanced[random.nextInt(balanced.size)]
+        } else {
+            val reusable = notAsked.ifEmpty { allQuestions }
+            val hardest = reusable.maxOf { it.difficulty.ordinal }
+            reusable.filter { it.difficulty.ordinal == hardest }
+                .minByOrNull { lastUsed[it.id] ?: Long.MIN_VALUE }!!
         }
+        lastUsed[question.id] = sequence++
+        currentGame += question.id
         return question
+    }
+
+    private fun balancedPool(fresh: List<Question>, session: GameSession): List<Question> {
+        val tie = session.tieBreak
+        val key = if (tie == null) "round:${session.currentRound}" else "tie:${tie.round}"
+        val difficulty = roundDifficulties.getOrPut(key) {
+            val needed = tie?.remainingPlayerIds?.size ?: session.players.size
+            val groups = fresh.groupBy { it.difficulty }
+            val sufficient = groups.filterValues { it.size >= needed }.keys.toList()
+            val candidates = sufficient.ifEmpty {
+                val maximum = groups.values.maxOf { it.size }
+                groups.filterValues { it.size == maximum }.keys.toList()
+            }
+            candidates[random.nextInt(candidates.size)]
+        }
+        return fresh.filter { it.difficulty == difficulty }.ifEmpty { fresh }
     }
 }

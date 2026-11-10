@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import se.yourcompany.miljonaren.data.repository.GameHistoryRepositoryFactory
 import se.yourcompany.miljonaren.data.repository.LocalQuestionRepository
+import se.yourcompany.miljonaren.data.repository.SharedPreferencesQuestionUsageStore
 import se.yourcompany.miljonaren.domain.usecase.ApplyFiftyFiftyUseCase
 import se.yourcompany.miljonaren.domain.usecase.AdvanceTurnUseCase
 import se.yourcompany.miljonaren.domain.usecase.FinishGameUseCase
@@ -18,7 +19,7 @@ class GameViewModelFactory(
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(GameViewModel::class.java)) {
-            val questionRepository = LocalQuestionRepository()
+            val questionRepository = LocalQuestionRepository(usageStore = SharedPreferencesQuestionUsageStore(context))
             val gameHistoryRepository = GameHistoryRepositoryFactory.create(context)
             return GameViewModel(
                 startGameUseCase = StartGameUseCase(),

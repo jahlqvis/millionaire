@@ -312,6 +312,24 @@ class GameViewModelTest {
     }
 
     @Test
+    fun questionUsage_isRecordedOnlyWhenGameCompletes() = runTest {
+        val repository = FakeQuestionRepository(5)
+        val viewModel = GameViewModel(
+            getNextQuestionUseCase = GetNextQuestionUseCase(repository),
+            answerRevealDelayMs = 0L
+        )
+        viewModel.startGame(listOf("Anna"))
+        viewModel.restartGame()
+        assertEquals(0, repository.completedGames)
+        viewModel.startGame(listOf("Anna"))
+        repeat(5) {
+            viewModel.submitAnswer("A")
+            advanceUntilIdle()
+        }
+        assertEquals(1, repository.completedGames)
+    }
+
+    @Test
     fun restartGame_clearsAllUiState() = runTest {
         val viewModel = createViewModel(questionCount = 6)
         viewModel.startGame(listOf("Anna", "Bengt"))
@@ -346,6 +364,7 @@ class GameViewModelTest {
     }
 
     private class FakeQuestionRepository(questionCount: Int) : QuestionRepository {
+        var completedGames = 0
         private val questions = (1..questionCount).map { index ->
             Question(
                 id = "q$index",
@@ -365,6 +384,8 @@ class GameViewModelTest {
         override fun getNextUnusedQuestion(askedIds: Set<String>): Question? {
             return questions.firstOrNull { it.id !in askedIds }
         }
+
+        override fun recordCompletedGame() { completedGames++ }
     }
 
     private class FakeGameHistoryRepository : GameHistoryRepository {

@@ -55,6 +55,7 @@ class GameViewModel(
         timerJob?.cancel()
         revealJob?.cancel()
         val startedSession = startGameUseCase(playerNames, maxRounds)
+        getNextQuestionUseCase.startGame()
         val next = getNextQuestionUseCase(startedSession)
 
         if (next.question == null) {
@@ -204,6 +205,7 @@ class GameViewModel(
 
             if (progressed.status == GameStatus.FINISHED) {
                 val gameResult = finishGameUseCase(progressed)
+                getNextQuestionUseCase.recordCompletedGame()
                 _uiState.value = GameUiState(
                     session = progressed,
                     remainingOptionIds = null,
@@ -217,6 +219,7 @@ class GameViewModel(
             val next = getNextQuestionUseCase(progressed)
             if (next.question == null || next.updatedSession.status == GameStatus.FINISHED) {
                 val gameResult = finishGameUseCase(next.updatedSession)
+                getNextQuestionUseCase.recordCompletedGame()
                 _uiState.value = GameUiState(
                     session = next.updatedSession,
                     remainingOptionIds = null,
