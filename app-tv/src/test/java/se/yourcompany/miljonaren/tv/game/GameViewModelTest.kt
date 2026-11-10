@@ -290,6 +290,28 @@ class GameViewModelTest {
     }
 
     @Test
+    fun tiedGame_playsTieBreakBeforeSavingWinner() = runTest {
+        val history = FakeGameHistoryRepository()
+        val viewModel = createViewModel(questionCount = 12, gameHistoryRepository = history)
+        viewModel.startGame(listOf("Anna", "Bengt"))
+        repeat(10) {
+            viewModel.submitAnswer("A")
+            advanceUntilIdle()
+        }
+        assertNull(viewModel.uiState.value.result)
+        assertEquals(1, viewModel.uiState.value.session?.tieBreak?.round)
+        assertTrue(history.savedSessionIds.isEmpty())
+        viewModel.submitAnswer("B")
+        advanceUntilIdle()
+        viewModel.submitAnswer("A")
+        advanceUntilIdle()
+        val result = viewModel.uiState.value.result!!
+        assertEquals("Bengt", result.winner?.name)
+        assertEquals(listOf(5, 5), result.rankedPlayers.map { it.score })
+        assertEquals(1, history.savedSessionIds.size)
+    }
+
+    @Test
     fun restartGame_clearsAllUiState() = runTest {
         val viewModel = createViewModel(questionCount = 6)
         viewModel.startGame(listOf("Anna", "Bengt"))

@@ -202,8 +202,10 @@ private fun MillionaireTvRoot() {
                 emptyLabel = stringResource(id = R.string.history_empty_state),
                 isLoading = historyState.isLoading,
                 games = historyState.games.map { game ->
+                    val winnerName = game.winnerName
                     val headline = if (game.isTie) {
-                        stringResource(id = R.string.history_tie)
+                        if (winnerName.isNullOrBlank()) stringResource(id = R.string.history_tie)
+                        else stringResource(id = R.string.history_tie_named, winnerName)
                     } else {
                         stringResource(
                             id = R.string.history_winner,
@@ -311,11 +313,9 @@ private fun MillionaireTvRoot() {
                 }
 
                 val gameplayState = GameplayUiState(
-                    roundLabel = stringResource(
-                        id = R.string.gameplay_round,
-                        activeSession.currentRound,
-                        activeSession.maxRounds
-                    ),
+                    roundLabel = activeSession.tieBreak?.let { tie ->
+                        stringResource(id = R.string.gameplay_tiebreak_round, tie.round)
+                    } ?: stringResource(id = R.string.gameplay_round, activeSession.currentRound, activeSession.maxRounds),
                     turnLabel = stringResource(
                         id = R.string.gameplay_turn,
                         activeSession.activePlayer.name
@@ -405,20 +405,20 @@ private fun MillionaireTvRoot() {
                 val resultsState = ResultsUiState(
                     title = stringResource(id = R.string.results_title),
                     isTie = gameResult.isTie,
-                    tieLabel = stringResource(id = R.string.results_tie),
+                    tieLabel = stringResource(id = R.string.results_tie, gameResult.winners.joinToString(", ") { it.name }),
                     winnerLabel = stringResource(
                         id = R.string.results_winner,
                         gameResult.winner?.name ?: "-"
                     ),
                     restartLabel = stringResource(id = R.string.results_restart),
-                    players = gameResult.rankedPlayers.mapIndexed { index, player ->
+                    players = gameResult.rankedPlayers.map { player ->
                         ResultsPlayerUiState(
-                            placement = index + 1,
+                            placement = gameResult.placementOf(player),
                             name = player.name,
                             score = player.score,
                             rowLabel = stringResource(
                                 id = R.string.results_score_row,
-                                index + 1,
+                                gameResult.placementOf(player),
                                 player.name,
                                 player.score
                             )

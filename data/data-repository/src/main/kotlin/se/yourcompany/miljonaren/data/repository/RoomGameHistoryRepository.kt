@@ -24,15 +24,15 @@ class RoomGameHistoryRepository(
             totalPlayers = session.players.size,
             totalRounds = session.maxRounds,
             isTie = result.isTie,
-            winnerName = result.winner?.name
+            winnerName = result.winners.joinToString(", ") { it.name }.ifEmpty { null }
         )
 
-        val playerResults = result.rankedPlayers.mapIndexed { index, player ->
+        val playerResults = result.rankedPlayers.map { player ->
             PlayerResultEntity(
                 sessionId = session.id,
                 playerId = player.id,
                 playerName = player.name,
-                placement = index + 1,
+                placement = result.placementOf(player),
                 score = player.score
             )
         }

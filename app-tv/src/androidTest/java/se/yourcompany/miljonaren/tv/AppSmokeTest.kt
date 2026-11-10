@@ -40,7 +40,7 @@ class AppSmokeTest {
         composeRule.waitUntil(timeoutMillis = 10_000) {
             composeRule.onAllNodesWithText("Vinnare:", substring = true).fetchSemanticsNodes()
                 .isNotEmpty() ||
-                composeRule.onAllNodesWithText("Oavgjort").fetchSemanticsNodes().isNotEmpty()
+                composeRule.onAllNodesWithText("Delad seger", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
     }
 }

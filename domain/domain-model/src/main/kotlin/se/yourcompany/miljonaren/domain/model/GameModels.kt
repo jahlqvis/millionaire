@@ -44,6 +44,12 @@ enum class GameStatus {
     FINISHED
 }
 
+data class TieBreakState(
+    val round: Int,
+    val remainingPlayerIds: List<String>,
+    val correctPlayerIds: Set<String> = emptySet()
+)
+
 data class GameSession(
     val id: String,
     val players: List<Player>,
@@ -53,7 +59,8 @@ data class GameSession(
     val askedQuestionIds: Set<String>,
     val currentQuestionId: String?,
     val usedLifelinesByPlayer: Map<String, Set<LifelineType>> = emptyMap(),
-    val status: GameStatus
+    val status: GameStatus,
+    val tieBreak: TieBreakState? = null
 ) {
     val activePlayer: Player
         get() = players[currentPlayerIndex]
@@ -78,5 +85,10 @@ data class AnswerEvaluation(
 data class GameResult(
     val rankedPlayers: List<Player>,
     val isTie: Boolean,
-    val winner: Player?
-)
+    val winner: Player?,
+    val winners: List<Player> = winner?.let { listOf(it) }
+        ?: rankedPlayers.filter { it.score == rankedPlayers.firstOrNull()?.score }
+) {
+    fun placementOf(player: Player): Int =
+        if (winners.any { it.id == player.id }) 1 else rankedPlayers.indexOfFirst { it.id == player.id } + 1
+}
