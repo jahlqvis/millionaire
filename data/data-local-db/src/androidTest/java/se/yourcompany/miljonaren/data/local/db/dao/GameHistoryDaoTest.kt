@@ -96,4 +96,21 @@ class GameHistoryDaoTest {
         assertEquals(listOf(1, 2, 3), results.map { it.placement })
         assertTrue(results.first().score >= results.last().score)
     }
+
+    @Test
+    fun pruneAndClear_removeSessionsAndCascadeResults() = runTest {
+        for (index in 1..3) {
+            val id = "s$index"
+            dao.insertCompletedGame(
+                GameSessionEntity(id, index.toLong(), 1, 5, false, "Anna"),
+                listOf(PlayerResultEntity(id, "p1", "Anna", 1, 3))
+            )
+        }
+        dao.pruneHistory(2)
+        assertEquals(listOf("s3", "s2"), dao.getRecentGameSessions().map { it.sessionId })
+        assertTrue(dao.getPlayerResultsForSession("s1").isEmpty())
+        dao.clearHistory()
+        assertTrue(dao.getRecentGameSessions().isEmpty())
+        assertTrue(dao.getPlayerResultsForSession("s2").isEmpty())
+    }
 }

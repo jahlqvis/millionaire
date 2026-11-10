@@ -15,6 +15,10 @@ interface GameHistoryRepository {
     suspend fun getRecentGames(): List<GameHistoryEntry>
 
     suspend fun getResultsForSession(sessionId: String): List<PlayerHistoryResult>
+
+    suspend fun pruneHistory(limit: Int)
+
+    suspend fun clearHistory()
 }
 
 class SaveCompletedGameUseCase(
@@ -58,6 +62,10 @@ class NoOpGameHistoryRepository : GameHistoryRepository {
     }
 
     override suspend fun getRecentGames(): List<GameHistoryEntry> = emptyList()
+
+    override suspend fun pruneHistory(limit: Int) = Unit
+
+    override suspend fun clearHistory() = Unit
 
     override suspend fun getResultsForSession(sessionId: String): List<PlayerHistoryResult> = emptyList()
 }

@@ -21,6 +21,7 @@ data class HomeUiState(
     val subtitle: String,
     val primaryActionLabel: String,
     val historyActionLabel: String,
+    val settingsActionLabel: String,
     val resumeActionLabel: String? = null
 )
 
@@ -29,6 +30,7 @@ fun HomeScreen(
     state: HomeUiState,
     onStartGame: () -> Unit,
     onOpenHistory: () -> Unit,
+    onOpenSettings: () -> Unit,
     onResumeGame: () -> Unit
 ) {
     TvScreenScaffold {
@@ -59,6 +61,11 @@ fun HomeScreen(
             TvSecondaryButton(
                 label = state.historyActionLabel,
                 onClick = onOpenHistory,
+                modifier = Modifier.fillMaxWidth()
+            )
+            TvSecondaryButton(
+                label = state.settingsActionLabel,
+                onClick = onOpenSettings,
                 modifier = Modifier.fillMaxWidth()
             )
         }
