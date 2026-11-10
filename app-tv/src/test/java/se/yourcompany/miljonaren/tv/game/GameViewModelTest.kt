@@ -1,6 +1,8 @@
 package se.yourcompany.miljonaren.tv.game
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -177,6 +179,8 @@ class GameViewModelTest {
     @Test
     fun submitAnswer_correctAnswerSetsFeedbackAndIncrementsScore() = runTest {
         val viewModel = createViewModel(questionCount = 6, answerRevealDelayMs = 1_000L)
+        val sounds = mutableListOf<SoundEffect>()
+        backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) { viewModel.audioEvents.collect { sounds.add(it) } }
         viewModel.startGame(listOf("Anna", "Bengt"))
 
         viewModel.submitAnswer("A")
@@ -194,13 +198,15 @@ class GameViewModelTest {
         assertFalse(advanced.answerLocked)
         assertEquals("Bengt", advanced.session?.activePlayer?.name)
         assertNull(advanced.remainingOptionIds)
-        assertTrue(viewModel.audioEvents.replayCache.contains(SoundEffect.ANSWER_SELECTED))
-        assertTrue(viewModel.audioEvents.replayCache.contains(SoundEffect.ANSWER_CORRECT))
+        assertEquals(listOf(SoundEffect.ANSWER_SELECTED, SoundEffect.ANSWER_CORRECT), sounds)
+        assertTrue(viewModel.audioEvents.replayCache.isEmpty())
     }
 
     @Test
     fun submitAnswer_wrongAnswerKeepsScoreUnchanged() = runTest {
         val viewModel = createViewModel(questionCount = 6, answerRevealDelayMs = 1_000L)
+        val sounds = mutableListOf<SoundEffect>()
+        backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) { viewModel.audioEvents.collect { sounds.add(it) } }
         viewModel.startGame(listOf("Anna", "Bengt"))
 
         viewModel.submitAnswer("B")
@@ -208,8 +214,8 @@ class GameViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(AnswerFeedback.WRONG, state.answerFeedback)
         assertEquals(0, state.session?.players?.first()?.score)
-        assertTrue(viewModel.audioEvents.replayCache.contains(SoundEffect.ANSWER_SELECTED))
-        assertTrue(viewModel.audioEvents.replayCache.contains(SoundEffect.ANSWER_WRONG))
+        runCurrent()
+        assertEquals(listOf(SoundEffect.ANSWER_SELECTED, SoundEffect.ANSWER_WRONG), sounds)
     }
 
     @Test
@@ -274,11 +280,14 @@ class GameViewModelTest {
             answerRevealDelayMs = 0L,
             gameHistoryRepository = fakeHistoryRepository
         )
+        val sounds = mutableListOf<SoundEffect>()
+        backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) { viewModel.audioEvents.collect { sounds.add(it) } }
         viewModel.startGame(listOf("Anna"))
 
         repeat(5) {
             viewModel.submitAnswer("A")
             advanceUntilIdle()
+            runCurrent()
         }
 
         val state = viewModel.uiState.value
@@ -286,7 +295,7 @@ class GameViewModelTest {
         assertNull(state.currentQuestion)
         assertEquals(5, state.result?.winner?.score)
         assertEquals(1, fakeHistoryRepository.savedSessionIds.size)
-        assertTrue(viewModel.audioEvents.replayCache.contains(SoundEffect.GAME_COMPLETE))
+        assertEquals(1, sounds.count { it == SoundEffect.GAME_COMPLETE })
     }
 
     @Test
