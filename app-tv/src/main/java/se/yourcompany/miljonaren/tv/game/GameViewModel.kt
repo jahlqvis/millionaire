@@ -17,10 +17,12 @@ import se.yourcompany.miljonaren.data.repository.LocalQuestionRepository
 import se.yourcompany.miljonaren.domain.model.GameResult
 import se.yourcompany.miljonaren.domain.model.GameSession
 import se.yourcompany.miljonaren.domain.model.GameStatus
+import se.yourcompany.miljonaren.domain.model.LifelineType
 import se.yourcompany.miljonaren.domain.usecase.ApplyFiftyFiftyUseCase
 import se.yourcompany.miljonaren.domain.usecase.AdvanceTurnUseCase
 import se.yourcompany.miljonaren.domain.usecase.FinishGameUseCase
 import se.yourcompany.miljonaren.domain.usecase.GetNextQuestionUseCase
+import se.yourcompany.miljonaren.domain.usecase.GetLifelineAdviceUseCase
 import se.yourcompany.miljonaren.domain.usecase.NoOpGameHistoryRepository
 import se.yourcompany.miljonaren.domain.usecase.SaveCompletedGameUseCase
 import se.yourcompany.miljonaren.domain.usecase.StartGameUseCase
@@ -31,6 +33,7 @@ class GameViewModel(
     private val getNextQuestionUseCase: GetNextQuestionUseCase =
         GetNextQuestionUseCase(LocalQuestionRepository()),
     private val applyFiftyFiftyUseCase: ApplyFiftyFiftyUseCase = ApplyFiftyFiftyUseCase(),
+    private val getLifelineAdviceUseCase: GetLifelineAdviceUseCase = GetLifelineAdviceUseCase(),
     private val submitAnswerUseCase: SubmitAnswerUseCase = SubmitAnswerUseCase(),
     private val advanceTurnUseCase: AdvanceTurnUseCase = AdvanceTurnUseCase(),
     private val finishGameUseCase: FinishGameUseCase = FinishGameUseCase(),
@@ -78,7 +81,7 @@ class GameViewModel(
         val currentState = _uiState.value
         val activeSession = currentState.session ?: return
         val activeQuestion = currentState.currentQuestion ?: return
-        if (currentState.isPaused || currentState.answerLocked || currentState.remainingOptionIds != null) {
+        if (currentState.isPaused || currentState.advice != null || currentState.answerLocked || currentState.remainingOptionIds != null) {
             return
         }
 
@@ -94,6 +97,24 @@ class GameViewModel(
         }
     }
 
+    fun useAdvice(type: LifelineType) {
+        val state = _uiState.value
+        val session = state.session ?: return
+        val question = state.currentQuestion ?: return
+        if (state.isPaused || state.answerLocked || state.advice != null) return
+        val result = runCatching {
+            getLifelineAdviceUseCase(session, question, type, state.remainingOptionIds)
+        }.getOrNull() ?: return
+        timerJob?.cancel()
+        _uiState.update { it.copy(session = result.updatedSession, advice = result.advice) }
+    }
+
+    fun dismissAdvice() {
+        if (_uiState.value.advice == null) return
+        _uiState.update { it.copy(advice = null) }
+        scheduleTimer()
+    }
+
     fun submitAnswer(selectedOptionId: String) {
         submitAnswerOrTimeout(selectedOptionId)
     }
@@ -102,7 +123,7 @@ class GameViewModel(
         val currentState = _uiState.value
         val activeSession = currentState.session ?: return
         val activeQuestion = currentState.currentQuestion ?: return
-        if (currentState.isPaused || currentState.answerLocked) {
+        if (currentState.isPaused || currentState.advice != null || currentState.answerLocked) {
             return
         }
         if (selectedOptionId != null &&
@@ -155,7 +176,7 @@ class GameViewModel(
 
     private fun scheduleTimer() {
         val remaining = _uiState.value.remainingTimerMs ?: return
-        if (_uiState.value.isPaused || _uiState.value.answerLocked) return
+        if (_uiState.value.isPaused || _uiState.value.answerLocked || _uiState.value.advice != null) return
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
             var left = remaining

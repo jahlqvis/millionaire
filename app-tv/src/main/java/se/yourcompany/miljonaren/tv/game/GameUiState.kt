@@ -3,6 +3,7 @@ package se.yourcompany.miljonaren.tv.game
 import se.yourcompany.miljonaren.domain.model.GameResult
 import se.yourcompany.miljonaren.domain.model.GameSession
 import se.yourcompany.miljonaren.domain.model.Question
+import se.yourcompany.miljonaren.domain.usecase.LifelineAdvice
 
 enum class AnswerFeedback {
     CORRECT,
@@ -19,5 +20,6 @@ data class GameUiState(
     val timerEnabled: Boolean = false,
     val remainingTimerMs: Long? = null,
     val isPaused: Boolean = false,
+    val advice: LifelineAdvice? = null,
     val result: GameResult? = null
 )

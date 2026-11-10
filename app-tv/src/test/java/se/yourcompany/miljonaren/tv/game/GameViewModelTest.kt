@@ -19,6 +19,7 @@ import se.yourcompany.miljonaren.domain.model.GameResult
 import se.yourcompany.miljonaren.domain.model.GameSession
 import se.yourcompany.miljonaren.domain.model.GameHistoryEntry
 import se.yourcompany.miljonaren.domain.model.Question
+import se.yourcompany.miljonaren.domain.model.LifelineType
 import se.yourcompany.miljonaren.domain.model.PlayerHistoryResult
 import se.yourcompany.miljonaren.domain.usecase.ApplyFiftyFiftyUseCase
 import se.yourcompany.miljonaren.domain.usecase.AdvanceTurnUseCase
@@ -140,6 +141,37 @@ class GameViewModelTest {
         viewModel.submitAnswer("C")
         assertFalse(viewModel.uiState.value.answerLocked)
         assertNull(viewModel.uiState.value.answerFeedback)
+    }
+
+    @Test
+    fun advice_pausesTimerAndSurvivesPauseUntilDismissed() = runTest {
+        val viewModel = createViewModel(questionCount = 6, answerRevealDelayMs = 5_000L)
+        viewModel.startGame(listOf("Anna"), timerEnabled = true)
+        runCurrent()
+        advanceTimeBy(5_000L)
+        runCurrent()
+        viewModel.useFiftyFifty()
+        viewModel.useAdvice(LifelineType.AUDIENCE)
+        assertTrue(viewModel.uiState.value.advice?.suggestedOptionId in setOf("A", "B"))
+        viewModel.submitAnswer("A")
+        assertFalse(viewModel.uiState.value.answerLocked)
+        advanceTimeBy(40_000L)
+        runCurrent()
+        assertEquals(25_000L, viewModel.uiState.value.remainingTimerMs)
+
+        viewModel.pauseGame()
+        viewModel.resumeGame()
+        advanceTimeBy(10_000L)
+        runCurrent()
+        assertEquals(25_000L, viewModel.uiState.value.remainingTimerMs)
+        viewModel.dismissAdvice()
+        runCurrent()
+        advanceTimeBy(1_000L)
+        runCurrent()
+        assertEquals(24_000L, viewModel.uiState.value.remainingTimerMs)
+        viewModel.useAdvice(LifelineType.AUDIENCE)
+        assertNull(viewModel.uiState.value.advice)
+        viewModel.restartGame()
     }
 
     @Test

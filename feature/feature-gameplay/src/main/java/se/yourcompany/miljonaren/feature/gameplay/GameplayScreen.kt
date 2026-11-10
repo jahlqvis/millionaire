@@ -2,6 +2,7 @@ package se.yourcompany.miljonaren.feature.gameplay
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
@@ -9,6 +10,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -26,12 +30,26 @@ data class GameplayOptionUiState(
     val isEnabled: Boolean
 )
 
+data class AudienceVoteUiState(val label: String, val percentage: Int)
+
+data class LifelineAdviceUiState(
+    val title: String,
+    val message: String?,
+    val votes: List<AudienceVoteUiState>,
+    val continueLabel: String
+)
+
 data class GameplayUiState(
     val roundLabel: String,
     val turnLabel: String,
     val timerLabel: String?,
     val fiftyFiftyLabel: String,
     val isFiftyFiftyAvailable: Boolean,
+    val audienceLabel: String,
+    val isAudienceAvailable: Boolean,
+    val friendLabel: String,
+    val isFriendAvailable: Boolean,
+    val advice: LifelineAdviceUiState?,
     val questionLabel: String,
     val options: List<GameplayOptionUiState>,
     val answerFeedback: String?,
@@ -44,8 +62,31 @@ data class GameplayUiState(
 fun GameplayScreen(
     state: GameplayUiState,
     onUseFiftyFifty: () -> Unit,
+    onUseAudience: () -> Unit,
+    onUseFriend: () -> Unit,
+    onDismissAdvice: () -> Unit,
+    onPause: () -> Unit,
     onAnswerSelected: (String) -> Unit
 ) {
+    state.advice?.let { advice ->
+        AlertDialog(
+            onDismissRequest = onPause,
+            title = { Text(advice.title) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    advice.message?.let { Text(it) }
+                    advice.votes.forEach { vote ->
+                        Text("${vote.label}: ${vote.percentage}%")
+                        LinearProgressIndicator(
+                            progress = vote.percentage / 100f,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = onDismissAdvice) { Text(advice.continueLabel) } }
+        )
+    }
     TvScreenScaffold {
         Column(
             modifier = Modifier
@@ -70,13 +111,29 @@ fun GameplayScreen(
                 Text(text = label, color = TvTheme.TextPrimary, fontSize = 22.sp)
             }
 
-            TvSecondaryButton(
-                label = state.fiftyFiftyLabel,
-                onClick = onUseFiftyFifty,
-                enabled = state.isFiftyFiftyAvailable,
-                selected = !state.isFiftyFiftyAvailable,
-                modifier = Modifier.widthIn(max = 220.dp)
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                TvSecondaryButton(
+                    label = state.fiftyFiftyLabel,
+                    onClick = onUseFiftyFifty,
+                    enabled = state.isFiftyFiftyAvailable,
+                    selected = !state.isFiftyFiftyAvailable,
+                    modifier = Modifier.weight(1f)
+                )
+                TvSecondaryButton(
+                    label = state.audienceLabel,
+                    onClick = onUseAudience,
+                    enabled = state.isAudienceAvailable,
+                    selected = !state.isAudienceAvailable,
+                    modifier = Modifier.weight(1f)
+                )
+                TvSecondaryButton(
+                    label = state.friendLabel,
+                    onClick = onUseFriend,
+                    enabled = state.isFriendAvailable,
+                    selected = !state.isFriendAvailable,
+                    modifier = Modifier.weight(1f)
+                )
+            }
 
             Surface(
                 color = TvTheme.Surface,

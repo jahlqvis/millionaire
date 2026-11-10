@@ -1,6 +1,7 @@
 package se.yourcompany.miljonaren.domain.usecase
 
 import java.util.UUID
+import kotlin.random.Random
 import se.yourcompany.miljonaren.domain.model.AnswerEvaluation
 import se.yourcompany.miljonaren.domain.model.GameResult
 import se.yourcompany.miljonaren.domain.model.GameSession
@@ -27,6 +28,48 @@ data class FiftyFiftyResult(
     val updatedSession: GameSession,
     val remainingOptionIds: Set<String>
 )
+
+data class LifelineAdvice(
+    val type: LifelineType,
+    val suggestedOptionId: String,
+    val audiencePercentages: Map<String, Int>,
+    val confidencePercent: Int = 80
+)
+
+data class AdviceResult(val updatedSession: GameSession, val advice: LifelineAdvice)
+
+class GetLifelineAdviceUseCase(private val randomInt: (Int) -> Int = { Random.nextInt(it) }) {
+    operator fun invoke(
+        session: GameSession,
+        question: Question,
+        type: LifelineType,
+        remainingOptionIds: Set<String>? = null
+    ): AdviceResult {
+        require(type == LifelineType.AUDIENCE || type == LifelineType.PHONE_A_FRIEND)
+        require(session.status == GameStatus.IN_PROGRESS)
+        require(session.currentQuestionId == question.id)
+        require(!session.hasUsedLifeline(session.activePlayer.id, type))
+
+        val available = question.options.filter { remainingOptionIds == null || it.id in remainingOptionIds }
+        require(available.size == 2 || available.size == 4)
+        require(available.any { it.id == question.correctOptionId })
+        val incorrect = available.filter { it.id != question.correctOptionId }
+        val suggestedId = if (randomInt(100) < 80) {
+            question.correctOptionId
+        } else {
+            incorrect[randomInt(incorrect.size)].id
+        }
+        val ranked = listOf(suggestedId) + available.map { it.id }.filter { it != suggestedId }
+        val shares = if (available.size == 2) listOf(70, 30) else listOf(55, 25, 12, 8)
+        val percentages = question.options.associate { option ->
+            option.id to ranked.indexOf(option.id).let { index -> if (index < 0) 0 else shares[index] }
+        }
+        return AdviceResult(
+            updatedSession = session.markLifelineUsed(session.activePlayer.id, type),
+            advice = LifelineAdvice(type, suggestedId, percentages)
+        )
+    }
+}
 
 class StartGameUseCase {
     operator fun invoke(playerNames: List<String>, maxRounds: Int = SPRINT_ONE_MAX_ROUNDS): GameSession {

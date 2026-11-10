@@ -29,6 +29,8 @@ import se.yourcompany.miljonaren.core.audio.SoundPoolGameAudioPlayer
 import se.yourcompany.miljonaren.domain.model.LifelineType
 import se.yourcompany.miljonaren.core.navigation.AppRoutes
 import se.yourcompany.miljonaren.feature.gameplay.GameplayOptionUiState
+import se.yourcompany.miljonaren.feature.gameplay.AudienceVoteUiState
+import se.yourcompany.miljonaren.feature.gameplay.LifelineAdviceUiState
 import se.yourcompany.miljonaren.feature.gameplay.GameplayScreen
 import se.yourcompany.miljonaren.feature.gameplay.GameplayUiState
 import se.yourcompany.miljonaren.feature.history.HistoryGameItemUiState
@@ -282,13 +284,14 @@ private fun MillionaireTvRoot() {
         }
 
         composable(AppRoutes.GAMEPLAY) {
-            BackHandler {
+            val pauseAndGoHome: () -> Unit = {
                 gameViewModel.pauseGame()
                 navController.navigate(AppRoutes.HOME) {
                     popUpTo(AppRoutes.HOME) { inclusive = false }
                     launchSingleTop = true
                 }
             }
+            BackHandler(onBack = pauseAndGoHome)
             val activeSession = uiState.session
             val activeQuestion = uiState.currentQuestion
             if (activeSession == null || activeQuestion == null) {
@@ -321,11 +324,36 @@ private fun MillionaireTvRoot() {
                         stringResource(id = R.string.gameplay_timer, ((it + 999L) / 1000L).toInt())
                     },
                     fiftyFiftyLabel = stringResource(id = R.string.gameplay_lifeline_fifty_fifty),
-                    isFiftyFiftyAvailable = !uiState.answerLocked &&
+                    isFiftyFiftyAvailable = !uiState.answerLocked && uiState.advice == null &&
                         !activeSession.hasUsedLifeline(
                             playerId = activeSession.activePlayer.id,
                             lifelineType = LifelineType.FIFTY_FIFTY
                         ),
+                    audienceLabel = stringResource(id = R.string.gameplay_lifeline_audience),
+                    isAudienceAvailable = !uiState.answerLocked && uiState.advice == null &&
+                        !activeSession.hasUsedLifeline(activeSession.activePlayer.id, LifelineType.AUDIENCE),
+                    friendLabel = stringResource(id = R.string.gameplay_lifeline_friend),
+                    isFriendAvailable = !uiState.answerLocked && uiState.advice == null &&
+                        !activeSession.hasUsedLifeline(activeSession.activePlayer.id, LifelineType.PHONE_A_FRIEND),
+                    advice = uiState.advice?.let { advice ->
+                        val isAudience = advice.type == LifelineType.AUDIENCE
+                        val suggested = activeQuestion.options.first { it.id == advice.suggestedOptionId }
+                        LifelineAdviceUiState(
+                            title = stringResource(
+                                id = if (isAudience) R.string.gameplay_lifeline_audience else R.string.gameplay_lifeline_friend
+                            ),
+                            message = if (isAudience) null else stringResource(
+                                id = R.string.gameplay_advice_friend,
+                                suggested.id,
+                                suggested.textSv,
+                                advice.confidencePercent
+                            ),
+                            votes = if (isAudience) activeQuestion.options.map { option ->
+                                AudienceVoteUiState(option.id, advice.audiencePercentages.getValue(option.id))
+                            } else emptyList(),
+                            continueLabel = stringResource(id = R.string.gameplay_advice_continue)
+                        )
+                    },
                     questionLabel = stringResource(
                         id = R.string.gameplay_question,
                         activeQuestion.textSv
@@ -358,6 +386,10 @@ private fun MillionaireTvRoot() {
                     onUseFiftyFifty = {
                         gameViewModel.useFiftyFifty()
                     },
+                    onUseAudience = { gameViewModel.useAdvice(LifelineType.AUDIENCE) },
+                    onUseFriend = { gameViewModel.useAdvice(LifelineType.PHONE_A_FRIEND) },
+                    onDismissAdvice = { gameViewModel.dismissAdvice() },
+                    onPause = pauseAndGoHome,
                     onAnswerSelected = { selectedOptionId ->
                         gameViewModel.submitAnswer(selectedOptionId)
                     }
