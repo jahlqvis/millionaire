@@ -29,6 +29,7 @@ data class GameplayOptionUiState(
 data class GameplayUiState(
     val roundLabel: String,
     val turnLabel: String,
+    val timerLabel: String?,
     val fiftyFiftyLabel: String,
     val isFiftyFiftyAvailable: Boolean,
     val questionLabel: String,
@@ -65,6 +66,9 @@ fun GameplayScreen(
                 fontSize = 26.sp,
                 fontWeight = FontWeight.SemiBold
             )
+            state.timerLabel?.let { label ->
+                Text(text = label, color = TvTheme.TextPrimary, fontSize = 22.sp)
+            }
 
             TvSecondaryButton(
                 label = state.fiftyFiftyLabel,

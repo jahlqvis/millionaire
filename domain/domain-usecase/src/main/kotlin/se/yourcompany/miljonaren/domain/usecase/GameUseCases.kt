@@ -124,7 +124,7 @@ class SubmitAnswerUseCase {
     operator fun invoke(
         session: GameSession,
         question: Question,
-        selectedOptionId: String
+        selectedOptionId: String?
     ): AnswerEvaluation {
         if (session.status == GameStatus.FINISHED) {
             return AnswerEvaluation(session, isCorrect = false)

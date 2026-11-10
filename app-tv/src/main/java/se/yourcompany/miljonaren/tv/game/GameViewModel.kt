@@ -2,6 +2,7 @@ package se.yourcompany.miljonaren.tv.game
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,15 +36,21 @@ class GameViewModel(
     private val finishGameUseCase: FinishGameUseCase = FinishGameUseCase(),
     private val saveCompletedGameUseCase: SaveCompletedGameUseCase =
         SaveCompletedGameUseCase(NoOpGameHistoryRepository()),
-    private val answerRevealDelayMs: Long = 5000L
+    private val answerRevealDelayMs: Long = 5000L,
+    private val questionTimeLimitMs: Long = 30_000L
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
     private val _audioEvents = MutableSharedFlow<SoundEffect>(replay = 4, extraBufferCapacity = 8)
     val audioEvents: SharedFlow<SoundEffect> = _audioEvents.asSharedFlow()
+    private var timerJob: Job? = null
+    private var revealJob: Job? = null
+    private var revealRemainingMs = 0L
 
-    fun startGame(playerNames: List<String>, maxRounds: Int = 5) {
+    fun startGame(playerNames: List<String>, maxRounds: Int = 5, timerEnabled: Boolean = false) {
+        timerJob?.cancel()
+        revealJob?.cancel()
         val startedSession = startGameUseCase(playerNames, maxRounds)
         val next = getNextQuestionUseCase(startedSession)
 
@@ -61,18 +68,17 @@ class GameViewModel(
         _uiState.value = GameUiState(
             session = next.updatedSession,
             currentQuestion = next.question,
-            remainingOptionIds = null,
-            answerLocked = false,
-            answerFeedback = null,
-            result = null
+            timerEnabled = timerEnabled,
+            remainingTimerMs = if (timerEnabled) questionTimeLimitMs else null
         )
+        scheduleTimer()
     }
 
     fun useFiftyFifty() {
         val currentState = _uiState.value
         val activeSession = currentState.session ?: return
         val activeQuestion = currentState.currentQuestion ?: return
-        if (currentState.answerLocked || currentState.remainingOptionIds != null) {
+        if (currentState.isPaused || currentState.answerLocked || currentState.remainingOptionIds != null) {
             return
         }
 
@@ -89,14 +95,23 @@ class GameViewModel(
     }
 
     fun submitAnswer(selectedOptionId: String) {
+        submitAnswerOrTimeout(selectedOptionId)
+    }
+
+    private fun submitAnswerOrTimeout(selectedOptionId: String?) {
         val currentState = _uiState.value
         val activeSession = currentState.session ?: return
         val activeQuestion = currentState.currentQuestion ?: return
-        if (currentState.answerLocked) {
+        if (currentState.isPaused || currentState.answerLocked) {
             return
         }
+        if (selectedOptionId != null &&
+            (activeQuestion.options.none { it.id == selectedOptionId } ||
+                currentState.remainingOptionIds?.contains(selectedOptionId) == false)
+        ) return
 
-        _audioEvents.tryEmit(SoundEffect.ANSWER_SELECTED)
+        timerJob?.cancel()
+        if (selectedOptionId != null) _audioEvents.tryEmit(SoundEffect.ANSWER_SELECTED)
 
         val evaluated = submitAnswerUseCase(
             session = activeSession,
@@ -108,10 +123,10 @@ class GameViewModel(
             it.copy(
                 session = evaluated.updatedSession,
                 currentQuestion = activeQuestion,
-                answerFeedback = if (evaluated.isCorrect) {
-                    AnswerFeedback.CORRECT
-                } else {
-                    AnswerFeedback.WRONG
+                answerFeedback = when {
+                    selectedOptionId == null -> AnswerFeedback.TIMEOUT
+                    evaluated.isCorrect -> AnswerFeedback.CORRECT
+                    else -> AnswerFeedback.WRONG
                 },
                 answerLocked = true
             )
@@ -121,10 +136,50 @@ class GameViewModel(
             if (evaluated.isCorrect) SoundEffect.ANSWER_CORRECT else SoundEffect.ANSWER_WRONG
         )
 
-        viewModelScope.launch {
-            delay(answerRevealDelayMs)
+        revealRemainingMs = answerRevealDelayMs
+        scheduleReveal()
+    }
 
-            val progressed = advanceTurnUseCase(evaluated.updatedSession)
+    fun pauseGame() {
+        if (_uiState.value.session == null || _uiState.value.result != null || _uiState.value.isPaused) return
+        _uiState.update { it.copy(isPaused = true) }
+        timerJob?.cancel()
+        revealJob?.cancel()
+    }
+
+    fun resumeGame() {
+        if (!_uiState.value.isPaused) return
+        _uiState.update { it.copy(isPaused = false) }
+        if (_uiState.value.answerLocked) scheduleReveal() else scheduleTimer()
+    }
+
+    private fun scheduleTimer() {
+        val remaining = _uiState.value.remainingTimerMs ?: return
+        if (_uiState.value.isPaused || _uiState.value.answerLocked) return
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
+            var left = remaining
+            while (left > 0L) {
+                val step = minOf(left, 100L)
+                delay(step)
+                left -= step
+                _uiState.update { it.copy(remainingTimerMs = left) }
+            }
+            submitAnswerOrTimeout(null)
+        }
+    }
+
+    private fun scheduleReveal() {
+        if (_uiState.value.isPaused) return
+        revealJob?.cancel()
+        revealJob = viewModelScope.launch {
+            while (revealRemainingMs > 0L) {
+                val step = minOf(revealRemainingMs, 100L)
+                delay(step)
+                revealRemainingMs -= step
+            }
+            val session = _uiState.value.session ?: return@launch
+            val progressed = advanceTurnUseCase(session)
 
             if (progressed.status == GameStatus.FINISHED) {
                 val gameResult = finishGameUseCase(progressed)
@@ -154,15 +209,16 @@ class GameViewModel(
             _uiState.value = GameUiState(
                 session = next.updatedSession,
                 currentQuestion = next.question,
-                remainingOptionIds = null,
-                answerLocked = false,
-                answerFeedback = null,
-                result = null
+                timerEnabled = _uiState.value.timerEnabled,
+                remainingTimerMs = if (_uiState.value.timerEnabled) questionTimeLimitMs else null
             )
+            scheduleTimer()
         }
     }
 
     fun restartGame() {
+        timerJob?.cancel()
+        revealJob?.cancel()
         _uiState.value = GameUiState()
     }
 
