@@ -137,4 +137,5 @@ After a successful debug build, APK is created at:
 
 ## Implementation Checklist
 
+- Product vision and requirements: `docs/product-specification.md`
 - Sprint 1.1 execution checklist: `docs/sprint-1.1-checklist.md`
