@@ -28,7 +28,7 @@ class AppSmokeTest {
                 composeRule.onAllNodesWithText("A:", substring = true).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithText("A:", substring = true).performClick()
-            Thread.sleep(1300)
+            Thread.sleep(5300)
         }
 
         composeRule.waitUntil(timeoutMillis = 10_000) {

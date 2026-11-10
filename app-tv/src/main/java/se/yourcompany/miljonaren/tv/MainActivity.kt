@@ -79,11 +79,13 @@ private fun MillionaireTvRoot() {
     )
     val minPlayersValidationError = stringResource(id = R.string.player_setup_validation_min_one)
     var playerCount by remember { mutableIntStateOf(2) }
+    var roundCount by remember { mutableIntStateOf(5) }
     var playerNames by remember { mutableStateOf(defaultPlayerNames) }
     var playerSetupError by remember { mutableStateOf<String?>(null) }
 
     fun resetPlayerSetupForm() {
         playerCount = 2
+        roundCount = 5
         playerNames = defaultPlayerNames
         playerSetupError = null
     }
@@ -95,6 +97,8 @@ private fun MillionaireTvRoot() {
         },
         backButtonLabel = stringResource(id = R.string.player_setup_back),
         startButtonLabel = stringResource(id = R.string.player_setup_start),
+        roundsLabel = stringResource(id = R.string.player_setup_rounds),
+        roundCount = roundCount,
         playerCount = playerCount,
         names = playerNames,
         validationError = playerSetupError
@@ -212,6 +216,7 @@ private fun MillionaireTvRoot() {
                         this[index] = newName
                     }
                 },
+                onRoundCountChanged = { roundCount = it },
                 onStartGame = {
                     val selectedNames = playerNames.take(playerCount).mapIndexed { index, name ->
                         name.trim().ifBlank { defaultPlayerNames[index] }
@@ -223,7 +228,7 @@ private fun MillionaireTvRoot() {
                     }
 
                     playerSetupError = null
-                    gameViewModel.startGame(selectedNames)
+                    gameViewModel.startGame(selectedNames, roundCount)
                     if (gameViewModel.uiState.value.result != null) {
                         navController.navigate(AppRoutes.RESULTS) {
                             launchSingleTop = true
@@ -288,6 +293,12 @@ private fun MillionaireTvRoot() {
                         )
                     },
                     answerFeedback = answerFeedback,
+                    correctAnswerLabel = if (uiState.answerFeedback != null) {
+                        stringResource(
+                            id = R.string.gameplay_correct_answer,
+                            activeQuestion.options.first { it.id == activeQuestion.correctOptionId }.textSv
+                        )
+                    } else null,
                     isAnswerCorrect = isAnswerCorrect,
                     answerLocked = uiState.answerLocked
                 )

@@ -35,7 +35,7 @@ class GameViewModel(
     private val finishGameUseCase: FinishGameUseCase = FinishGameUseCase(),
     private val saveCompletedGameUseCase: SaveCompletedGameUseCase =
         SaveCompletedGameUseCase(NoOpGameHistoryRepository()),
-    private val answerRevealDelayMs: Long = 1200L
+    private val answerRevealDelayMs: Long = 5000L
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GameUiState())
@@ -43,8 +43,8 @@ class GameViewModel(
     private val _audioEvents = MutableSharedFlow<SoundEffect>(replay = 4, extraBufferCapacity = 8)
     val audioEvents: SharedFlow<SoundEffect> = _audioEvents.asSharedFlow()
 
-    fun startGame(playerNames: List<String>) {
-        val startedSession = startGameUseCase(playerNames)
+    fun startGame(playerNames: List<String>, maxRounds: Int = 5) {
+        val startedSession = startGameUseCase(playerNames, maxRounds)
         val next = getNextQuestionUseCase(startedSession)
 
         if (next.question == null) {

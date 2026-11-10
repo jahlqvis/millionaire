@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
@@ -24,6 +26,8 @@ data class PlayerSetupUiState(
     val playerNameLabels: List<String>,
     val backButtonLabel: String,
     val startButtonLabel: String,
+    val roundsLabel: String,
+    val roundCount: Int,
     val playerCount: Int,
     val names: List<String>,
     val validationError: String?
@@ -34,6 +38,7 @@ fun PlayerSetupScreen(
     state: PlayerSetupUiState,
     onPlayerCountChanged: (Int) -> Unit,
     onPlayerNameChanged: (Int, String) -> Unit,
+    onRoundCountChanged: (Int) -> Unit,
     onStartGame: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -41,7 +46,8 @@ fun PlayerSetupScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .widthIn(max = 900.dp),
+                .widthIn(max = 900.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             Text(
@@ -84,6 +90,18 @@ fun PlayerSetupScreen(
                         cursorColor = TvTheme.Accent
                     )
                 )
+            }
+
+            Text(text = state.roundsLabel, color = TvTheme.TextPrimary, fontSize = 22.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                listOf(3, 5, 10).forEach { count ->
+                    TvSecondaryButton(
+                        label = count.toString(),
+                        onClick = { onRoundCountChanged(count) },
+                        selected = state.roundCount == count,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
 
             state.validationError?.let { message ->
