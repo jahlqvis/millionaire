@@ -381,5 +381,9 @@ class GameViewModelTest {
         override suspend fun getRecentGames(): List<GameHistoryEntry> = emptyList()
 
         override suspend fun getResultsForSession(sessionId: String): List<PlayerHistoryResult> = emptyList()
+
+        override suspend fun pruneHistory(limit: Int) = Unit
+
+        override suspend fun clearHistory() = Unit
     }
 }

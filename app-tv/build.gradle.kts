@@ -59,6 +59,7 @@ dependencies {
     implementation(project(":feature:feature-player-setup"))
     implementation(project(":feature:feature-gameplay"))
     implementation(project(":feature:feature-results"))
+    implementation(project(":feature:feature-settings"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

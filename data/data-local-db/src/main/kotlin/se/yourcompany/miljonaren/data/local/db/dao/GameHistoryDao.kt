@@ -26,6 +26,22 @@ interface GameHistoryDao {
         insertPlayerResults(playerResults)
     }
 
+    @Transaction
+    suspend fun insertCompletedGameAndPrune(
+        gameSession: GameSessionEntity,
+        playerResults: List<PlayerResultEntity>,
+        limit: Int
+    ) {
+        insertCompletedGame(gameSession, playerResults)
+        pruneHistory(limit)
+    }
+
+    @Query("DELETE FROM game_sessions WHERE sessionId NOT IN (SELECT sessionId FROM game_sessions ORDER BY completedAtEpochMs DESC, sessionId DESC LIMIT :limit)")
+    suspend fun pruneHistory(limit: Int)
+
+    @Query("DELETE FROM game_sessions")
+    suspend fun clearHistory()
+
     @Query("SELECT * FROM game_sessions ORDER BY completedAtEpochMs DESC")
     suspend fun getRecentGameSessions(): List<GameSessionEntity>
 

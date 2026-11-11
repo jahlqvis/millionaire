@@ -5,6 +5,7 @@
 
     <string name="home_start_game">Starta spel</string>
     <string name="home_history">Historik</string>
+    <string name="home_settings">Inställningar</string>
     <string name="home_resume">Fortsätt spel</string>
     <string name="home_discard_title">Avsluta pausat spel?</string>
     <string name="home_discard_message">Det pausade spelet försvinner om du startar ett nytt.</string>
@@ -55,6 +56,17 @@
     <string name="history_winner">Vinnare: %1$s</string>
     <string name="history_players_rounds">%1$d spelare • %2$d rundor • %3$s</string>
     <string name="history_result_row">%1$d. %2$s - %3$d poäng</string>
+
+    <string name="settings_title">Inställningar</string>
+    <string name="settings_sound">Ljudeffekter</string>
+    <string name="settings_sound_on">På</string>
+    <string name="settings_sound_off">Av</string>
+    <string name="settings_history_limit">Antal sparade spel</string>
+    <string name="settings_clear_history">Rensa historik</string>
+    <string name="settings_clear_title">Rensa spelhistoriken?</string>
+    <string name="settings_clear_message">Alla sparade spelresultat tas bort. Det går inte att ångra.</string>
+    <string name="settings_clear_confirm">Rensa</string>
+    <string name="settings_error">Kunde inte uppdatera historiken. Försök igen.</string>
 
     <string name="default_player_name">Spelare %1$d</string>
 </resources>

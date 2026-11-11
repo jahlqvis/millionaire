@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -44,11 +45,15 @@ import se.yourcompany.miljonaren.feature.playersetup.PlayerSetupScreen
 import se.yourcompany.miljonaren.feature.results.ResultsPlayerUiState
 import se.yourcompany.miljonaren.feature.results.ResultsScreen
 import se.yourcompany.miljonaren.feature.results.ResultsUiState
+import se.yourcompany.miljonaren.feature.settings.SettingsScreen
+import se.yourcompany.miljonaren.feature.settings.SettingsUiState
 import se.yourcompany.miljonaren.tv.game.AnswerFeedback
 import se.yourcompany.miljonaren.tv.game.GameViewModel
 import se.yourcompany.miljonaren.tv.game.GameViewModelFactory
 import se.yourcompany.miljonaren.tv.history.HistoryViewModel
 import se.yourcompany.miljonaren.tv.history.HistoryViewModelFactory
+import se.yourcompany.miljonaren.tv.settings.SettingsViewModel
+import se.yourcompany.miljonaren.tv.settings.SettingsViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,13 +74,19 @@ private fun MillionaireTvRoot() {
     val historyViewModelFactory = remember(context) {
         HistoryViewModelFactory(context.applicationContext)
     }
+    val settingsViewModelFactory = remember(context) {
+        SettingsViewModelFactory(context.applicationContext)
+    }
     val audioPlayer = remember(context) {
         SoundPoolGameAudioPlayer(context.applicationContext)
     }
     val gameViewModel: GameViewModel = viewModel(factory = gameViewModelFactory)
     val historyViewModel: HistoryViewModel = viewModel(factory = historyViewModelFactory)
+    val settingsViewModel: SettingsViewModel = viewModel(factory = settingsViewModelFactory)
     val uiState by gameViewModel.uiState.collectAsState()
     val historyState by historyViewModel.state.collectAsState()
+    val settingsState by settingsViewModel.state.collectAsState()
+    val soundEnabled by rememberUpdatedState(settingsState.soundEnabled)
     val defaultPlayerNames = listOf(
         stringResource(id = R.string.default_player_name, 1),
         stringResource(id = R.string.default_player_name, 2),
@@ -87,6 +98,7 @@ private fun MillionaireTvRoot() {
     var roundCount by remember { mutableIntStateOf(5) }
     var timerEnabled by remember { mutableStateOf(false) }
     var showDiscardConfirmation by remember { mutableStateOf(false) }
+    var showClearHistoryConfirmation by remember { mutableStateOf(false) }
     var playerNames by remember { mutableStateOf(defaultPlayerNames) }
     var playerSetupError by remember { mutableStateOf<String?>(null) }
 
@@ -124,7 +136,7 @@ private fun MillionaireTvRoot() {
 
     LaunchedEffect(gameViewModel) {
         gameViewModel.audioEvents.collectLatest { soundEffect ->
-            audioPlayer.play(soundEffect)
+            if (soundEnabled) audioPlayer.play(soundEffect)
         }
     }
 
@@ -161,6 +173,25 @@ private fun MillionaireTvRoot() {
         )
     }
 
+    if (showClearHistoryConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showClearHistoryConfirmation = false },
+            title = { Text(stringResource(id = R.string.settings_clear_title)) },
+            text = { Text(stringResource(id = R.string.settings_clear_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearHistoryConfirmation = false
+                    settingsViewModel.clearHistory()
+                }) { Text(stringResource(id = R.string.settings_clear_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearHistoryConfirmation = false }) {
+                    Text(stringResource(id = R.string.home_discard_cancel))
+                }
+            }
+        )
+    }
+
     NavHost(
         navController = navController,
         startDestination = AppRoutes.HOME
@@ -172,6 +203,7 @@ private fun MillionaireTvRoot() {
                     subtitle = stringResource(id = R.string.home_subtitle),
                     primaryActionLabel = stringResource(id = R.string.home_start_game),
                     historyActionLabel = stringResource(id = R.string.home_history),
+                    settingsActionLabel = stringResource(id = R.string.home_settings),
                     resumeActionLabel = if (uiState.isPaused) stringResource(id = R.string.home_resume) else null
                 ),
                 onStartGame = {
@@ -182,10 +214,35 @@ private fun MillionaireTvRoot() {
                         launchSingleTop = true
                     }
                 },
+                onOpenSettings = {
+                    navController.navigate(AppRoutes.SETTINGS) { launchSingleTop = true }
+                },
                 onResumeGame = {
                     gameViewModel.resumeGame()
                     navController.navigate(AppRoutes.GAMEPLAY) { launchSingleTop = true }
                 }
+            )
+        }
+
+        composable(AppRoutes.SETTINGS) {
+            SettingsScreen(
+                state = SettingsUiState(
+                    title = stringResource(id = R.string.settings_title),
+                    soundLabel = stringResource(id = R.string.settings_sound),
+                    soundOnLabel = stringResource(id = R.string.settings_sound_on),
+                    soundOffLabel = stringResource(id = R.string.settings_sound_off),
+                    soundEnabled = settingsState.soundEnabled,
+                    historyLabel = stringResource(id = R.string.settings_history_limit),
+                    historyLimit = settingsState.historyLimit,
+                    clearLabel = stringResource(id = R.string.settings_clear_history),
+                    backLabel = stringResource(id = R.string.player_setup_back),
+                    isBusy = settingsState.isBusy,
+                    error = if (settingsState.hasError) stringResource(id = R.string.settings_error) else null
+                ),
+                onSoundChanged = settingsViewModel::setSoundEnabled,
+                onHistoryLimitChanged = settingsViewModel::setHistoryLimit,
+                onClearHistory = { showClearHistoryConfirmation = true },
+                onBack = { navController.popBackStack() }
             )
         }
 
