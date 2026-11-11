@@ -28,6 +28,16 @@ class GameUseCasesTest {
     }
 
     @Test
+    fun startGame_acceptsSupportedRoundCountsAndRejectsOthers() {
+        for (rounds in listOf(3, 5, 10)) {
+            assertEquals(rounds, StartGameUseCase()(listOf("Anna"), rounds).maxRounds)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            StartGameUseCase()(listOf("Anna"), 4)
+        }
+    }
+
+    @Test
     fun advanceTurn_rotatesPlayersAndIncrementsRounds() {
         val useCase = AdvanceTurnUseCase()
         val initial = sampleSession()

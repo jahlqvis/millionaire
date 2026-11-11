@@ -10,6 +10,7 @@ import se.yourcompany.miljonaren.domain.model.Player
 import se.yourcompany.miljonaren.domain.model.Question
 
 const val SPRINT_ONE_MAX_ROUNDS = 5
+val SUPPORTED_ROUND_COUNTS = setOf(3, 5, 10)
 private const val MIN_PLAYERS = 1
 private const val MAX_PLAYERS = 4
 
@@ -28,9 +29,12 @@ data class FiftyFiftyResult(
 )
 
 class StartGameUseCase {
-    operator fun invoke(playerNames: List<String>): GameSession {
+    operator fun invoke(playerNames: List<String>, maxRounds: Int = SPRINT_ONE_MAX_ROUNDS): GameSession {
         require(playerNames.size in MIN_PLAYERS..MAX_PLAYERS) {
             "Player count must be between $MIN_PLAYERS and $MAX_PLAYERS"
+        }
+        require(maxRounds in SUPPORTED_ROUND_COUNTS) {
+            "Round count must be one of $SUPPORTED_ROUND_COUNTS"
         }
 
         val players = playerNames.mapIndexed { index, rawName ->
@@ -46,7 +50,7 @@ class StartGameUseCase {
             players = players,
             currentPlayerIndex = 0,
             currentRound = 1,
-            maxRounds = SPRINT_ONE_MAX_ROUNDS,
+            maxRounds = maxRounds,
             askedQuestionIds = emptySet(),
             currentQuestionId = null,
             usedLifelinesByPlayer = emptyMap(),

@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -32,6 +34,7 @@ data class GameplayUiState(
     val questionLabel: String,
     val options: List<GameplayOptionUiState>,
     val answerFeedback: String?,
+    val correctAnswerLabel: String?,
     val isAnswerCorrect: Boolean?,
     val answerLocked: Boolean
 )
@@ -46,7 +49,8 @@ fun GameplayScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .widthIn(max = 1050.dp),
+                .widthIn(max = 1050.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
@@ -105,6 +109,9 @@ fun GameplayScreen(
                     fontSize = 26.sp,
                     fontWeight = FontWeight.Bold
                 )
+                state.correctAnswerLabel?.let { label ->
+                    Text(text = label, color = TvTheme.TextPrimary, fontSize = 22.sp)
+                }
             }
         }
     }

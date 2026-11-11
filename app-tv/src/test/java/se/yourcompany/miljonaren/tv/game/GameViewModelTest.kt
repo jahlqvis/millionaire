@@ -50,6 +50,28 @@ class GameViewModelTest {
     }
 
     @Test
+    fun startGame_usesSelectedRounds() = runTest {
+        val viewModel = createViewModel(questionCount = 6)
+        viewModel.startGame(listOf("Anna"), maxRounds = 3)
+        assertEquals(3, viewModel.uiState.value.session?.maxRounds)
+    }
+
+    @Test
+    fun answerFeedback_remainsVisibleForFiveSeconds() = runTest {
+        val viewModel = createViewModel(questionCount = 6, answerRevealDelayMs = 5_000L)
+        viewModel.startGame(listOf("Anna"))
+        viewModel.submitAnswer("B")
+
+        advanceTimeBy(4_999L)
+        assertEquals(AnswerFeedback.WRONG, viewModel.uiState.value.answerFeedback)
+        assertEquals("A", viewModel.uiState.value.currentQuestion?.correctOptionId)
+        advanceTimeBy(1L)
+        advanceUntilIdle()
+        assertNull(viewModel.uiState.value.answerFeedback)
+        assertEquals("Fråga 2", viewModel.uiState.value.currentQuestion?.textSv)
+    }
+
+    @Test
     fun submitAnswer_correctAnswerSetsFeedbackAndIncrementsScore() = runTest {
         val viewModel = createViewModel(questionCount = 6, answerRevealDelayMs = 1_000L)
         viewModel.startGame(listOf("Anna", "Bengt"))
