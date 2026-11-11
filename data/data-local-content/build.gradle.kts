@@ -8,4 +8,6 @@ kotlin {
 
 dependencies {
     implementation(project(":domain:domain-model"))
+    implementation(libs.gson)
+    testImplementation(libs.junit)
 }
