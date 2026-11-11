@@ -5,7 +5,10 @@ import java.text.DateFormat
 import java.util.Date
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -80,12 +83,15 @@ private fun MillionaireTvRoot() {
     val minPlayersValidationError = stringResource(id = R.string.player_setup_validation_min_one)
     var playerCount by remember { mutableIntStateOf(2) }
     var roundCount by remember { mutableIntStateOf(5) }
+    var timerEnabled by remember { mutableStateOf(false) }
+    var showDiscardConfirmation by remember { mutableStateOf(false) }
     var playerNames by remember { mutableStateOf(defaultPlayerNames) }
     var playerSetupError by remember { mutableStateOf<String?>(null) }
 
     fun resetPlayerSetupForm() {
         playerCount = 2
         roundCount = 5
+        timerEnabled = false
         playerNames = defaultPlayerNames
         playerSetupError = null
     }
@@ -99,6 +105,10 @@ private fun MillionaireTvRoot() {
         startButtonLabel = stringResource(id = R.string.player_setup_start),
         roundsLabel = stringResource(id = R.string.player_setup_rounds),
         roundCount = roundCount,
+        timerLabel = stringResource(id = R.string.player_setup_timer),
+        timerOffLabel = stringResource(id = R.string.player_setup_timer_off),
+        timerOnLabel = stringResource(id = R.string.player_setup_timer_on),
+        timerEnabled = timerEnabled,
         playerCount = playerCount,
         names = playerNames,
         validationError = playerSetupError
@@ -124,6 +134,31 @@ private fun MillionaireTvRoot() {
         }
     }
 
+    fun openPlayerSetup() {
+        resetPlayerSetupForm()
+        navController.navigate(AppRoutes.PLAYER_SETUP) { launchSingleTop = true }
+    }
+
+    if (showDiscardConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDiscardConfirmation = false },
+            title = { Text(stringResource(id = R.string.home_discard_title)) },
+            text = { Text(stringResource(id = R.string.home_discard_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDiscardConfirmation = false
+                    gameViewModel.restartGame()
+                    openPlayerSetup()
+                }) { Text(stringResource(id = R.string.home_discard_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardConfirmation = false }) {
+                    Text(stringResource(id = R.string.home_discard_cancel))
+                }
+            }
+        )
+    }
+
     NavHost(
         navController = navController,
         startDestination = AppRoutes.HOME
@@ -134,18 +169,20 @@ private fun MillionaireTvRoot() {
                     title = stringResource(id = R.string.app_name),
                     subtitle = stringResource(id = R.string.home_subtitle),
                     primaryActionLabel = stringResource(id = R.string.home_start_game),
-                    historyActionLabel = stringResource(id = R.string.home_history)
+                    historyActionLabel = stringResource(id = R.string.home_history),
+                    resumeActionLabel = if (uiState.isPaused) stringResource(id = R.string.home_resume) else null
                 ),
                 onStartGame = {
-                    resetPlayerSetupForm()
-                    navController.navigate(AppRoutes.PLAYER_SETUP) {
-                        launchSingleTop = true
-                    }
+                    if (uiState.isPaused) showDiscardConfirmation = true else openPlayerSetup()
                 },
                 onOpenHistory = {
                     navController.navigate(AppRoutes.HISTORY) {
                         launchSingleTop = true
                     }
+                },
+                onResumeGame = {
+                    gameViewModel.resumeGame()
+                    navController.navigate(AppRoutes.GAMEPLAY) { launchSingleTop = true }
                 }
             )
         }
@@ -217,6 +254,7 @@ private fun MillionaireTvRoot() {
                     }
                 },
                 onRoundCountChanged = { roundCount = it },
+                onTimerEnabledChanged = { timerEnabled = it },
                 onStartGame = {
                     val selectedNames = playerNames.take(playerCount).mapIndexed { index, name ->
                         name.trim().ifBlank { defaultPlayerNames[index] }
@@ -228,7 +266,7 @@ private fun MillionaireTvRoot() {
                     }
 
                     playerSetupError = null
-                    gameViewModel.startGame(selectedNames, roundCount)
+                    gameViewModel.startGame(selectedNames, roundCount, timerEnabled)
                     if (gameViewModel.uiState.value.result != null) {
                         navController.navigate(AppRoutes.RESULTS) {
                             launchSingleTop = true
@@ -244,6 +282,13 @@ private fun MillionaireTvRoot() {
         }
 
         composable(AppRoutes.GAMEPLAY) {
+            BackHandler {
+                gameViewModel.pauseGame()
+                navController.navigate(AppRoutes.HOME) {
+                    popUpTo(AppRoutes.HOME) { inclusive = false }
+                    launchSingleTop = true
+                }
+            }
             val activeSession = uiState.session
             val activeQuestion = uiState.currentQuestion
             if (activeSession == null || activeQuestion == null) {
@@ -252,11 +297,13 @@ private fun MillionaireTvRoot() {
                 val answerFeedback = when (uiState.answerFeedback) {
                     AnswerFeedback.CORRECT -> stringResource(id = R.string.gameplay_feedback_correct)
                     AnswerFeedback.WRONG -> stringResource(id = R.string.gameplay_feedback_wrong)
+                    AnswerFeedback.TIMEOUT -> stringResource(id = R.string.gameplay_feedback_timeout)
                     null -> null
                 }
                 val isAnswerCorrect = when (uiState.answerFeedback) {
                     AnswerFeedback.CORRECT -> true
                     AnswerFeedback.WRONG -> false
+                    AnswerFeedback.TIMEOUT -> false
                     null -> null
                 }
 
@@ -270,6 +317,9 @@ private fun MillionaireTvRoot() {
                         id = R.string.gameplay_turn,
                         activeSession.activePlayer.name
                     ),
+                    timerLabel = uiState.remainingTimerMs?.let {
+                        stringResource(id = R.string.gameplay_timer, ((it + 999L) / 1000L).toInt())
+                    },
                     fiftyFiftyLabel = stringResource(id = R.string.gameplay_lifeline_fifty_fifty),
                     isFiftyFiftyAvailable = !uiState.answerLocked &&
                         !activeSession.hasUsedLifeline(

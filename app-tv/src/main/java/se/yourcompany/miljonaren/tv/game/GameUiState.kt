@@ -6,7 +6,8 @@ import se.yourcompany.miljonaren.domain.model.Question
 
 enum class AnswerFeedback {
     CORRECT,
-    WRONG
+    WRONG,
+    TIMEOUT
 }
 
 data class GameUiState(
@@ -15,5 +16,8 @@ data class GameUiState(
     val remainingOptionIds: Set<String>? = null,
     val answerFeedback: AnswerFeedback? = null,
     val answerLocked: Boolean = false,
+    val timerEnabled: Boolean = false,
+    val remainingTimerMs: Long? = null,
+    val isPaused: Boolean = false,
     val result: GameResult? = null
 )

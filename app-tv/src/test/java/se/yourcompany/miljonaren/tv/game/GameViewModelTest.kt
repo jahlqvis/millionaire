@@ -4,6 +4,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -69,6 +70,76 @@ class GameViewModelTest {
         advanceUntilIdle()
         assertNull(viewModel.uiState.value.answerFeedback)
         assertEquals("Fråga 2", viewModel.uiState.value.currentQuestion?.textSv)
+    }
+
+    @Test
+    fun timer_pausesAndResumesThenTimesOutWithoutScoring() = runTest {
+        val viewModel = createViewModel(questionCount = 6, answerRevealDelayMs = 5_000L)
+        viewModel.startGame(listOf("Anna"), timerEnabled = true)
+        runCurrent()
+        advanceTimeBy(5_000L)
+        runCurrent()
+        assertEquals(25_000L, viewModel.uiState.value.remainingTimerMs)
+
+        viewModel.pauseGame()
+        advanceTimeBy(40_000L)
+        runCurrent()
+        assertEquals(25_000L, viewModel.uiState.value.remainingTimerMs)
+        assertFalse(viewModel.uiState.value.answerLocked)
+
+        viewModel.resumeGame()
+        runCurrent()
+        advanceTimeBy(25_000L)
+        runCurrent()
+        assertEquals(AnswerFeedback.TIMEOUT, viewModel.uiState.value.answerFeedback)
+        assertEquals(0, viewModel.uiState.value.session?.players?.first()?.score)
+        assertTrue(viewModel.uiState.value.answerLocked)
+        advanceTimeBy(5_000L)
+        runCurrent()
+        assertEquals("Fråga 2", viewModel.uiState.value.currentQuestion?.textSv)
+        assertEquals(30_000L, viewModel.uiState.value.remainingTimerMs)
+        viewModel.restartGame()
+    }
+
+    @Test
+    fun pauseDuringReveal_preservesRemainingRevealTime() = runTest {
+        val viewModel = createViewModel(questionCount = 6, answerRevealDelayMs = 5_000L)
+        viewModel.startGame(listOf("Anna"))
+        viewModel.submitAnswer("A")
+        runCurrent()
+        advanceTimeBy(2_000L)
+        runCurrent()
+        viewModel.pauseGame()
+        advanceTimeBy(10_000L)
+        runCurrent()
+        assertEquals("Fråga 1", viewModel.uiState.value.currentQuestion?.textSv)
+        assertEquals(AnswerFeedback.CORRECT, viewModel.uiState.value.answerFeedback)
+        viewModel.resumeGame()
+        runCurrent()
+        advanceTimeBy(3_000L)
+        runCurrent()
+        assertEquals("Fråga 2", viewModel.uiState.value.currentQuestion?.textSv)
+    }
+
+    @Test
+    fun restartGame_cancelsPendingAnswerReveal() = runTest {
+        val viewModel = createViewModel(questionCount = 6, answerRevealDelayMs = 5_000L)
+        viewModel.startGame(listOf("Anna"))
+        viewModel.submitAnswer("A")
+        viewModel.restartGame()
+        advanceUntilIdle()
+        assertNull(viewModel.uiState.value.session)
+        assertNull(viewModel.uiState.value.result)
+    }
+
+    @Test
+    fun removedAnswer_cannotBeSubmitted() = runTest {
+        val viewModel = createViewModel(questionCount = 6)
+        viewModel.startGame(listOf("Anna"))
+        viewModel.useFiftyFifty()
+        viewModel.submitAnswer("C")
+        assertFalse(viewModel.uiState.value.answerLocked)
+        assertNull(viewModel.uiState.value.answerFeedback)
     }
 
     @Test

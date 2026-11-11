@@ -20,14 +20,16 @@ data class HomeUiState(
     val title: String,
     val subtitle: String,
     val primaryActionLabel: String,
-    val historyActionLabel: String
+    val historyActionLabel: String,
+    val resumeActionLabel: String? = null
 )
 
 @Composable
 fun HomeScreen(
     state: HomeUiState,
     onStartGame: () -> Unit,
-    onOpenHistory: () -> Unit
+    onOpenHistory: () -> Unit,
+    onResumeGame: () -> Unit
 ) {
     TvScreenScaffold {
         Column(
@@ -46,6 +48,9 @@ fun HomeScreen(
                 color = TvTheme.TextSecondary,
                 fontSize = 24.sp
             )
+            state.resumeActionLabel?.let { label ->
+                TvPrimaryButton(label = label, onClick = onResumeGame, modifier = Modifier.fillMaxWidth())
+            }
             TvPrimaryButton(
                 label = state.primaryActionLabel,
                 onClick = onStartGame,

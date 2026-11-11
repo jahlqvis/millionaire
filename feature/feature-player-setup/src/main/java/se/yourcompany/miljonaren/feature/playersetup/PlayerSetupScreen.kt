@@ -28,6 +28,10 @@ data class PlayerSetupUiState(
     val startButtonLabel: String,
     val roundsLabel: String,
     val roundCount: Int,
+    val timerLabel: String,
+    val timerOffLabel: String,
+    val timerOnLabel: String,
+    val timerEnabled: Boolean,
     val playerCount: Int,
     val names: List<String>,
     val validationError: String?
@@ -39,6 +43,7 @@ fun PlayerSetupScreen(
     onPlayerCountChanged: (Int) -> Unit,
     onPlayerNameChanged: (Int, String) -> Unit,
     onRoundCountChanged: (Int) -> Unit,
+    onTimerEnabledChanged: (Boolean) -> Unit,
     onStartGame: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -102,6 +107,22 @@ fun PlayerSetupScreen(
                         modifier = Modifier.weight(1f)
                     )
                 }
+            }
+
+            Text(text = state.timerLabel, color = TvTheme.TextPrimary, fontSize = 22.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                TvSecondaryButton(
+                    label = state.timerOffLabel,
+                    onClick = { onTimerEnabledChanged(false) },
+                    selected = !state.timerEnabled,
+                    modifier = Modifier.weight(1f)
+                )
+                TvSecondaryButton(
+                    label = state.timerOnLabel,
+                    onClick = { onTimerEnabledChanged(true) },
+                    selected = state.timerEnabled,
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             state.validationError?.let { message ->
