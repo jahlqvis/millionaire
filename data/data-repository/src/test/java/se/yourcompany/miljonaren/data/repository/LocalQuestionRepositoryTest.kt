@@ -5,9 +5,11 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.random.Random
+import se.yourcompany.miljonaren.data.local.content.BundledQuestionPack
 import se.yourcompany.miljonaren.domain.model.AnswerOption
 import se.yourcompany.miljonaren.domain.model.Difficulty
 import se.yourcompany.miljonaren.domain.model.Question
+import se.yourcompany.miljonaren.domain.model.QuestionTheme
 import se.yourcompany.miljonaren.domain.usecase.StartGameUseCase
 
 class LocalQuestionRepositoryTest {
@@ -54,7 +56,7 @@ class LocalQuestionRepositoryTest {
         assertTrue(store.load().isEmpty())
         val completed = first.getNextUnusedQuestion(emptySet())!!.id
         first.recordCompletedGame()
-        assertEquals(listOf(listOf(completed)), store.load())
+        assertEquals(listOf(listOf("general::$completed")), store.load())
         val second = LocalQuestionRepository(pool, store, Random(2))
         assertTrue(second.getNextUnusedQuestion(emptySet())!!.id != completed)
         assertTrue(abandoned in pool.map { it.id })
@@ -84,5 +86,39 @@ class LocalQuestionRepositoryTest {
         val second = repository.getNextQuestion(session.copy(askedQuestionIds = setOf(first.id), currentPlayerIndex = 1))!!
         assertEquals(first.difficulty, second.difficulty)
         assertTrue(first.id != second.id)
+    }
+
+    @Test
+    fun themeSelection_keepsQuestionsAndUsageSeparate() {
+        val store = InMemoryQuestionUsageStore()
+        store.save(listOf(listOf("general::q1", "general::q2")))
+        val zeroRandom = object : Random() { override fun nextBits(bitCount: Int) = 0 }
+        val repository = LocalQuestionRepository(
+            usageStore = store,
+            random = zeroRandom,
+            packs = listOf(
+                BundledQuestionPack(QuestionTheme("general", "Blandat"), listOf(question("q1", Difficulty.EASY))),
+                BundledQuestionPack(QuestionTheme("space", "Rymden"), listOf(question("q1", Difficulty.EASY), question("q2", Difficulty.HARD)))
+            )
+        )
+        assertEquals(listOf("general", "space"), repository.getQuestionThemes().map { it.id })
+        repository.selectQuestionTheme("space")
+        repository.startGame()
+        assertEquals("q1", repository.getNextUnusedQuestion(emptySet())?.id)
+        repository.recordCompletedGame()
+        assertEquals(listOf("space::q1"), store.load().last())
+    }
+
+    @Test
+    fun legacyQuestionUsage_stillAppliesToDefaultPack() {
+        val store = InMemoryQuestionUsageStore()
+        store.save(listOf(listOf("q1")))
+        val repository = LocalQuestionRepository(
+            listOf(question("q1", Difficulty.EASY), question("q2", Difficulty.EASY)), store, Random(1)
+        )
+        assertEquals("q2", repository.getNextUnusedQuestion(emptySet())?.id)
+        org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            repository.selectQuestionTheme("unknown")
+        }
     }
 }

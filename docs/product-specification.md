@@ -10,6 +10,7 @@ Miljonaren TV is a Swedish, family-friendly party quiz for friends and family pl
 
 - Support 1–4 players, including solo play. Players share the TV remote and take individual turns.
 - At setup, the host chooses 3, 5 or 10 rounds; default to 5. Each player gets one question per round and the same number of turns.
+- At setup, the host chooses one bundled question theme for the whole game. The existing mixed questions are the default theme.
 - A standard game should target 10–15 minutes. Longer configurations, especially 10 rounds, may take longer.
 - Award one point for a correct answer and no points for an incorrect answer or timeout. Do not penalize mistakes.
 - After an answer or timeout, show the correct answer and the outcome for 5 seconds, then advance automatically.
@@ -50,11 +51,12 @@ Audience and friend suggestions should each be correct approximately 80% of the 
 
 - UI and questions are in Swedish. Content must be family-friendly.
 - Bundle a curated question library with the app; gameplay does not require internet access.
+- Support multiple themed JSON question packs. Packs are added to the project and bundled into a new app build; on-device import is not required. See `docs/question-pack-format.md` for the manifest and pack format.
 - Select a random mix of categories and difficulty levels, balancing difficulty across players within each round.
 - Avoid reusing questions within a game when possible. Across games, avoid questions from the last 10 completed games when possible.
 - If fresh questions run out, including during tie-breakers, reuse eligible questions from the hardest difficulty first, preferring the least recently used within that difficulty. Continue to balance difficulty between players where possible.
 - Target 600 reviewed questions for the initial library, distributed across categories and difficulty levels. A four-player, 10-round game requires 40 questions; up to three tie-breaker rounds can add 12. Eleven maximum-length games could therefore use up to 572 questions, although the distribution of difficulties may still require reuse.
-- Questions will be created and reviewed in a separate AI session, then added to the project as JSON files and bundled into app builds. On-device import is not required. Use a JSON format with stable question IDs, category, difficulty, question text, four answers and the correct answer. Validate imports for missing fields and duplicate questions or IDs.
+- Questions will be created and reviewed in a separate AI session, then added to the project as JSON files and bundled into app builds. Use a JSON format with stable question IDs, category, difficulty, question text, four answers and the correct answer. Validate imports for missing fields and duplicate questions or IDs within a pack. Recent-use tracking distinguishes questions from different themes.
 
 ## Results, history and audio
 
@@ -80,5 +82,4 @@ Expand content and prioritize further improvements based on playtesting. No onli
 
 ## Open decisions
 
-- Exact JSON schema and development-time validation workflow.
 - Question category and difficulty distribution, and the review process for accuracy and family suitability.

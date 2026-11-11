@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "packs": [
+    { "id": "general", "nameSv": "Blandat", "resource": "/questions.json" }
+  ]
+}

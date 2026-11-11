@@ -45,6 +45,9 @@ class GameViewModel(
 
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
+    val questionThemes = getNextQuestionUseCase.getQuestionThemes().toList()
+    val defaultQuestionThemeId = (questionThemes.firstOrNull { it.id == "general" }
+        ?: requireNotNull(questionThemes.firstOrNull()) { "At least one question theme is required" }).id
     // Sound effects are one-shot events and must not replay on activity recreation.
     private val _audioEvents = MutableSharedFlow<SoundEffect>(extraBufferCapacity = 8)
     val audioEvents: SharedFlow<SoundEffect> = _audioEvents.asSharedFlow()
@@ -52,10 +55,17 @@ class GameViewModel(
     private var revealJob: Job? = null
     private var revealRemainingMs = 0L
 
-    fun startGame(playerNames: List<String>, maxRounds: Int = 5, timerEnabled: Boolean = false) {
+    fun startGame(
+        playerNames: List<String>,
+        maxRounds: Int = 5,
+        timerEnabled: Boolean = false,
+        themeId: String = defaultQuestionThemeId
+    ) {
+        val startedSession = startGameUseCase(playerNames, maxRounds)
+        require(questionThemes.any { it.id == themeId }) { "Unknown question theme: $themeId" }
+        getNextQuestionUseCase.selectQuestionTheme(themeId)
         timerJob?.cancel()
         revealJob?.cancel()
-        val startedSession = startGameUseCase(playerNames, maxRounds)
         getNextQuestionUseCase.startGame()
         val next = getNextQuestionUseCase(startedSession)
 

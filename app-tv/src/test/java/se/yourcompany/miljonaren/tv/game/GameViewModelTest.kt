@@ -12,6 +12,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
 import org.junit.Rule
 import org.junit.Test
 import se.yourcompany.miljonaren.core.audio.SoundEffect
@@ -21,6 +22,7 @@ import se.yourcompany.miljonaren.domain.model.GameResult
 import se.yourcompany.miljonaren.domain.model.GameSession
 import se.yourcompany.miljonaren.domain.model.GameHistoryEntry
 import se.yourcompany.miljonaren.domain.model.Question
+import se.yourcompany.miljonaren.domain.model.QuestionTheme
 import se.yourcompany.miljonaren.domain.model.LifelineType
 import se.yourcompany.miljonaren.domain.model.PlayerHistoryResult
 import se.yourcompany.miljonaren.domain.usecase.ApplyFiftyFiftyUseCase
@@ -58,6 +60,36 @@ class GameViewModelTest {
         val viewModel = createViewModel(questionCount = 6)
         viewModel.startGame(listOf("Anna"), maxRounds = 3)
         assertEquals(3, viewModel.uiState.value.session?.maxRounds)
+    }
+
+    @Test
+    fun startGame_loadsOnlyTheSelectedTheme() = runTest {
+        val repository = object : QuestionRepository {
+            var selected = "general"
+            override fun getQuestionThemes() = listOf(QuestionTheme("space", "Rymden"), QuestionTheme("general", "Blandat"))
+            override fun selectQuestionTheme(themeId: String) { selected = themeId }
+            override fun getNextUnusedQuestion(askedIds: Set<String>) = Question(
+                id = selected,
+                textSv = "Fråga i $selected",
+                options = listOf("A", "B", "C", "D").map { AnswerOption(it, it) },
+                correctOptionId = "A",
+                category = "Test",
+                difficulty = Difficulty.EASY
+            )
+        }
+        val viewModel = GameViewModel(getNextQuestionUseCase = GetNextQuestionUseCase(repository))
+        assertEquals(listOf("space", "general"), viewModel.questionThemes.map { it.id })
+        viewModel.startGame(listOf("Anna"))
+        assertEquals("Fråga i general", viewModel.uiState.value.currentQuestion?.textSv)
+        viewModel.startGame(listOf("Anna"), themeId = "space")
+        assertEquals("Fråga i space", viewModel.uiState.value.currentQuestion?.textSv)
+        val sessionId = viewModel.uiState.value.session?.id
+        assertThrows(IllegalArgumentException::class.java) {
+            viewModel.startGame(listOf("Anna"), themeId = "missing")
+        }
+        assertEquals(sessionId, viewModel.uiState.value.session?.id)
+        viewModel.startGame(listOf("Anna"), themeId = "general")
+        assertEquals("Fråga i general", viewModel.uiState.value.currentQuestion?.textSv)
     }
 
     @Test

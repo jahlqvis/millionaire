@@ -17,6 +17,8 @@ data class AnswerOption(
     val textSv: String
 )
 
+data class QuestionTheme(val id: String, val nameSv: String)
+
 data class Question(
     val id: String,
     val textSv: String,
