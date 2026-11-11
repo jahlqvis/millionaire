@@ -7,7 +7,9 @@ data class Player(
 )
 
 enum class LifelineType {
-    FIFTY_FIFTY
+    FIFTY_FIFTY,
+    AUDIENCE,
+    PHONE_A_FRIEND
 }
 
 data class AnswerOption(

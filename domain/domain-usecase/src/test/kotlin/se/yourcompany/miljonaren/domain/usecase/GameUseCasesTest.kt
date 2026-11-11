@@ -157,6 +157,51 @@ class GameUseCasesTest {
         }
     }
 
+    @Test
+    fun advice_respectsFiftyFiftyAndShowsValidPercentages() {
+        val question = sampleQuestion(id = "q1", correctId = "C")
+        val session = sampleSession(currentQuestionId = question.id)
+        val alwaysWrong = GetLifelineAdviceUseCase { bound -> if (bound == 100) 99 else 0 }
+
+        for (type in listOf(LifelineType.AUDIENCE, LifelineType.PHONE_A_FRIEND)) {
+            val result = alwaysWrong(session, question, type, setOf("A", "C"))
+            assertEquals("A", result.advice.suggestedOptionId)
+            assertEquals(100, result.advice.audiencePercentages.values.sum())
+            assertEquals(70, result.advice.audiencePercentages["A"])
+            assertEquals(30, result.advice.audiencePercentages["C"])
+            assertEquals(0, result.advice.audiencePercentages["B"])
+            assertEquals(0, result.advice.audiencePercentages["D"])
+            assertTrue(result.updatedSession.hasUsedLifeline("p1", type))
+            assertThrows(IllegalArgumentException::class.java) {
+                alwaysWrong(result.updatedSession, question, type, setOf("A", "C"))
+            }
+        }
+    }
+
+    @Test
+    fun advice_correctProbabilityUsesEightyOfOneHundredOutcomes() {
+        val question = sampleQuestion(id = "q1", correctId = "C")
+        val session = sampleSession(currentQuestionId = question.id)
+        var draw = 0
+        val advice = GetLifelineAdviceUseCase { bound -> if (bound == 100) draw++ else 0 }
+        val correctCount = (0 until 100).count {
+            advice(session, question, LifelineType.AUDIENCE).advice.suggestedOptionId == "C"
+        }
+        assertEquals(80, correctCount)
+    }
+
+    @Test
+    fun advice_rejectsInactiveAndInvalidQuestions() {
+        val question = sampleQuestion(id = "q1", correctId = "C")
+        val useCase = GetLifelineAdviceUseCase { 0 }
+        assertThrows(IllegalArgumentException::class.java) {
+            useCase(sampleSession(currentQuestionId = "other"), question, LifelineType.AUDIENCE)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            useCase(sampleSession(currentQuestionId = "q1"), question, LifelineType.AUDIENCE, setOf("A", "B"))
+        }
+    }
+
     private fun sampleSession(
         players: List<Player> = listOf(
             Player(id = "p1", name = "Anna", score = 0),
