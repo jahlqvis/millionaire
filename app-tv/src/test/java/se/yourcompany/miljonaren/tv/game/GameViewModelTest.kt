@@ -1,9 +1,12 @@
 package se.yourcompany.miljonaren.tv.game
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -18,6 +21,7 @@ import se.yourcompany.miljonaren.domain.model.GameResult
 import se.yourcompany.miljonaren.domain.model.GameSession
 import se.yourcompany.miljonaren.domain.model.GameHistoryEntry
 import se.yourcompany.miljonaren.domain.model.Question
+import se.yourcompany.miljonaren.domain.model.LifelineType
 import se.yourcompany.miljonaren.domain.model.PlayerHistoryResult
 import se.yourcompany.miljonaren.domain.usecase.ApplyFiftyFiftyUseCase
 import se.yourcompany.miljonaren.domain.usecase.AdvanceTurnUseCase
@@ -72,8 +76,111 @@ class GameViewModelTest {
     }
 
     @Test
+    fun timer_pausesAndResumesThenTimesOutWithoutScoring() = runTest {
+        val viewModel = createViewModel(questionCount = 6, answerRevealDelayMs = 5_000L)
+        viewModel.startGame(listOf("Anna"), timerEnabled = true)
+        runCurrent()
+        advanceTimeBy(5_000L)
+        runCurrent()
+        assertEquals(25_000L, viewModel.uiState.value.remainingTimerMs)
+
+        viewModel.pauseGame()
+        advanceTimeBy(40_000L)
+        runCurrent()
+        assertEquals(25_000L, viewModel.uiState.value.remainingTimerMs)
+        assertFalse(viewModel.uiState.value.answerLocked)
+
+        viewModel.resumeGame()
+        runCurrent()
+        advanceTimeBy(25_000L)
+        runCurrent()
+        assertEquals(AnswerFeedback.TIMEOUT, viewModel.uiState.value.answerFeedback)
+        assertEquals(0, viewModel.uiState.value.session?.players?.first()?.score)
+        assertTrue(viewModel.uiState.value.answerLocked)
+        advanceTimeBy(5_000L)
+        runCurrent()
+        assertEquals("Fråga 2", viewModel.uiState.value.currentQuestion?.textSv)
+        assertEquals(30_000L, viewModel.uiState.value.remainingTimerMs)
+        viewModel.restartGame()
+    }
+
+    @Test
+    fun pauseDuringReveal_preservesRemainingRevealTime() = runTest {
+        val viewModel = createViewModel(questionCount = 6, answerRevealDelayMs = 5_000L)
+        viewModel.startGame(listOf("Anna"))
+        viewModel.submitAnswer("A")
+        runCurrent()
+        advanceTimeBy(2_000L)
+        runCurrent()
+        viewModel.pauseGame()
+        advanceTimeBy(10_000L)
+        runCurrent()
+        assertEquals("Fråga 1", viewModel.uiState.value.currentQuestion?.textSv)
+        assertEquals(AnswerFeedback.CORRECT, viewModel.uiState.value.answerFeedback)
+        viewModel.resumeGame()
+        runCurrent()
+        advanceTimeBy(3_000L)
+        runCurrent()
+        assertEquals("Fråga 2", viewModel.uiState.value.currentQuestion?.textSv)
+    }
+
+    @Test
+    fun restartGame_cancelsPendingAnswerReveal() = runTest {
+        val viewModel = createViewModel(questionCount = 6, answerRevealDelayMs = 5_000L)
+        viewModel.startGame(listOf("Anna"))
+        viewModel.submitAnswer("A")
+        viewModel.restartGame()
+        advanceUntilIdle()
+        assertNull(viewModel.uiState.value.session)
+        assertNull(viewModel.uiState.value.result)
+    }
+
+    @Test
+    fun removedAnswer_cannotBeSubmitted() = runTest {
+        val viewModel = createViewModel(questionCount = 6)
+        viewModel.startGame(listOf("Anna"))
+        viewModel.useFiftyFifty()
+        viewModel.submitAnswer("C")
+        assertFalse(viewModel.uiState.value.answerLocked)
+        assertNull(viewModel.uiState.value.answerFeedback)
+    }
+
+    @Test
+    fun advice_pausesTimerAndSurvivesPauseUntilDismissed() = runTest {
+        val viewModel = createViewModel(questionCount = 6, answerRevealDelayMs = 5_000L)
+        viewModel.startGame(listOf("Anna"), timerEnabled = true)
+        runCurrent()
+        advanceTimeBy(5_000L)
+        runCurrent()
+        viewModel.useFiftyFifty()
+        viewModel.useAdvice(LifelineType.AUDIENCE)
+        assertTrue(viewModel.uiState.value.advice?.suggestedOptionId in setOf("A", "B"))
+        viewModel.submitAnswer("A")
+        assertFalse(viewModel.uiState.value.answerLocked)
+        advanceTimeBy(40_000L)
+        runCurrent()
+        assertEquals(25_000L, viewModel.uiState.value.remainingTimerMs)
+
+        viewModel.pauseGame()
+        viewModel.resumeGame()
+        advanceTimeBy(10_000L)
+        runCurrent()
+        assertEquals(25_000L, viewModel.uiState.value.remainingTimerMs)
+        viewModel.dismissAdvice()
+        runCurrent()
+        advanceTimeBy(1_000L)
+        runCurrent()
+        assertEquals(24_000L, viewModel.uiState.value.remainingTimerMs)
+        viewModel.useAdvice(LifelineType.AUDIENCE)
+        assertNull(viewModel.uiState.value.advice)
+        viewModel.restartGame()
+    }
+
+    @Test
     fun submitAnswer_correctAnswerSetsFeedbackAndIncrementsScore() = runTest {
         val viewModel = createViewModel(questionCount = 6, answerRevealDelayMs = 1_000L)
+        val sounds = mutableListOf<SoundEffect>()
+        backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) { viewModel.audioEvents.collect { sounds.add(it) } }
         viewModel.startGame(listOf("Anna", "Bengt"))
 
         viewModel.submitAnswer("A")
@@ -91,13 +198,15 @@ class GameViewModelTest {
         assertFalse(advanced.answerLocked)
         assertEquals("Bengt", advanced.session?.activePlayer?.name)
         assertNull(advanced.remainingOptionIds)
-        assertTrue(viewModel.audioEvents.replayCache.contains(SoundEffect.ANSWER_SELECTED))
-        assertTrue(viewModel.audioEvents.replayCache.contains(SoundEffect.ANSWER_CORRECT))
+        assertEquals(listOf(SoundEffect.ANSWER_SELECTED, SoundEffect.ANSWER_CORRECT), sounds)
+        assertTrue(viewModel.audioEvents.replayCache.isEmpty())
     }
 
     @Test
     fun submitAnswer_wrongAnswerKeepsScoreUnchanged() = runTest {
         val viewModel = createViewModel(questionCount = 6, answerRevealDelayMs = 1_000L)
+        val sounds = mutableListOf<SoundEffect>()
+        backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) { viewModel.audioEvents.collect { sounds.add(it) } }
         viewModel.startGame(listOf("Anna", "Bengt"))
 
         viewModel.submitAnswer("B")
@@ -105,8 +214,8 @@ class GameViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(AnswerFeedback.WRONG, state.answerFeedback)
         assertEquals(0, state.session?.players?.first()?.score)
-        assertTrue(viewModel.audioEvents.replayCache.contains(SoundEffect.ANSWER_SELECTED))
-        assertTrue(viewModel.audioEvents.replayCache.contains(SoundEffect.ANSWER_WRONG))
+        runCurrent()
+        assertEquals(listOf(SoundEffect.ANSWER_SELECTED, SoundEffect.ANSWER_WRONG), sounds)
     }
 
     @Test
@@ -171,11 +280,14 @@ class GameViewModelTest {
             answerRevealDelayMs = 0L,
             gameHistoryRepository = fakeHistoryRepository
         )
+        val sounds = mutableListOf<SoundEffect>()
+        backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) { viewModel.audioEvents.collect { sounds.add(it) } }
         viewModel.startGame(listOf("Anna"))
 
         repeat(5) {
             viewModel.submitAnswer("A")
             advanceUntilIdle()
+            runCurrent()
         }
 
         val state = viewModel.uiState.value
@@ -183,7 +295,47 @@ class GameViewModelTest {
         assertNull(state.currentQuestion)
         assertEquals(5, state.result?.winner?.score)
         assertEquals(1, fakeHistoryRepository.savedSessionIds.size)
-        assertTrue(viewModel.audioEvents.replayCache.contains(SoundEffect.GAME_COMPLETE))
+        assertEquals(1, sounds.count { it == SoundEffect.GAME_COMPLETE })
+    }
+
+    @Test
+    fun tiedGame_playsTieBreakBeforeSavingWinner() = runTest {
+        val history = FakeGameHistoryRepository()
+        val viewModel = createViewModel(questionCount = 12, gameHistoryRepository = history)
+        viewModel.startGame(listOf("Anna", "Bengt"))
+        repeat(10) {
+            viewModel.submitAnswer("A")
+            advanceUntilIdle()
+        }
+        assertNull(viewModel.uiState.value.result)
+        assertEquals(1, viewModel.uiState.value.session?.tieBreak?.round)
+        assertTrue(history.savedSessionIds.isEmpty())
+        viewModel.submitAnswer("B")
+        advanceUntilIdle()
+        viewModel.submitAnswer("A")
+        advanceUntilIdle()
+        val result = viewModel.uiState.value.result!!
+        assertEquals("Bengt", result.winner?.name)
+        assertEquals(listOf(5, 5), result.rankedPlayers.map { it.score })
+        assertEquals(1, history.savedSessionIds.size)
+    }
+
+    @Test
+    fun questionUsage_isRecordedOnlyWhenGameCompletes() = runTest {
+        val repository = FakeQuestionRepository(5)
+        val viewModel = GameViewModel(
+            getNextQuestionUseCase = GetNextQuestionUseCase(repository),
+            answerRevealDelayMs = 0L
+        )
+        viewModel.startGame(listOf("Anna"))
+        viewModel.restartGame()
+        assertEquals(0, repository.completedGames)
+        viewModel.startGame(listOf("Anna"))
+        repeat(5) {
+            viewModel.submitAnswer("A")
+            advanceUntilIdle()
+        }
+        assertEquals(1, repository.completedGames)
     }
 
     @Test
@@ -221,6 +373,7 @@ class GameViewModelTest {
     }
 
     private class FakeQuestionRepository(questionCount: Int) : QuestionRepository {
+        var completedGames = 0
         private val questions = (1..questionCount).map { index ->
             Question(
                 id = "q$index",
@@ -240,6 +393,8 @@ class GameViewModelTest {
         override fun getNextUnusedQuestion(askedIds: Set<String>): Question? {
             return questions.firstOrNull { it.id !in askedIds }
         }
+
+        override fun recordCompletedGame() { completedGames++ }
     }
 
     private class FakeGameHistoryRepository : GameHistoryRepository {
@@ -256,5 +411,9 @@ class GameViewModelTest {
         override suspend fun getRecentGames(): List<GameHistoryEntry> = emptyList()
 
         override suspend fun getResultsForSession(sessionId: String): List<PlayerHistoryResult> = emptyList()
+
+        override suspend fun pruneHistory(limit: Int) = Unit
+
+        override suspend fun clearHistory() = Unit
     }
 }

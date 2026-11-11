@@ -3,6 +3,7 @@ package se.yourcompany.miljonaren.data.repository
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import se.yourcompany.miljonaren.data.local.db.dao.GameHistoryDao
 import se.yourcompany.miljonaren.data.local.db.entity.GameSessionEntity
@@ -36,6 +37,33 @@ class RoomGameHistoryRepositoryTest {
         assertEquals("Anna", savedSession.winnerName)
         assertEquals(listOf(1, 2), savedResults.map { it.placement })
         assertEquals(listOf("p1", "p2"), savedResults.map { it.playerId })
+    }
+
+    @Test
+    fun saveCompletedGame_persistsSharedWinnersAndFirstPlace() = runTest {
+        val dao = FakeGameHistoryDao()
+        val session = sampleSession()
+        val winners = session.players
+        val result = GameResult(rankedPlayers = winners, isTie = true, winner = null, winners = winners)
+        RoomGameHistoryRepository(dao).saveCompletedGame(session, result, 1_000L)
+        assertEquals("Anna, Bengt", dao.gameSessions.single().winnerName)
+        assertEquals(listOf(1, 1), dao.playerResultsBySession[session.id]!!.map { it.placement })
+    }
+
+    @Test
+    fun saveCompletedGame_appliesLimitAndClearRemovesResults() = runTest {
+        val dao = FakeGameHistoryDao()
+        dao.insertCompletedGame(
+            GameSessionEntity("old", 1_000L, 1, 5, false, "Old"),
+            listOf(PlayerResultEntity("old", "p1", "Old", 1, 1))
+        )
+        val repository = RoomGameHistoryRepository(dao) { 1 }
+        repository.saveCompletedGame(sampleSession(), sampleResult(), 2_000L)
+        assertEquals(listOf("session-1"), dao.gameSessions.map { it.sessionId })
+        assertTrue(dao.playerResultsBySession["old"].isNullOrEmpty())
+        repository.clearHistory()
+        assertTrue(dao.gameSessions.isEmpty())
+        assertTrue(dao.playerResultsBySession.isEmpty())
     }
 
     @Test
@@ -117,6 +145,17 @@ class RoomGameHistoryRepositoryTest {
 
         override suspend fun getPlayerResultsForSession(sessionId: String): List<PlayerResultEntity> {
             return playerResultsBySession[sessionId].orEmpty().sortedBy { it.placement }
+        }
+
+        override suspend fun pruneHistory(limit: Int) {
+            val removed = gameSessions.drop(limit).map { it.sessionId }.toSet()
+            gameSessions.removeAll { it.sessionId in removed }
+            removed.forEach { playerResultsBySession.remove(it) }
+        }
+
+        override suspend fun clearHistory() {
+            gameSessions.clear()
+            playerResultsBySession.clear()
         }
     }
 }

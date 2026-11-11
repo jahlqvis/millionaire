@@ -10,7 +10,8 @@ import se.yourcompany.miljonaren.domain.model.PlayerHistoryResult
 import se.yourcompany.miljonaren.domain.usecase.GameHistoryRepository
 
 class RoomGameHistoryRepository(
-    private val gameHistoryDao: GameHistoryDao
+    private val gameHistoryDao: GameHistoryDao,
+    private val historyLimit: () -> Int = { 100 }
 ) : GameHistoryRepository {
 
     override suspend fun saveCompletedGame(
@@ -24,22 +25,23 @@ class RoomGameHistoryRepository(
             totalPlayers = session.players.size,
             totalRounds = session.maxRounds,
             isTie = result.isTie,
-            winnerName = result.winner?.name
+            winnerName = result.winners.joinToString(", ") { it.name }.ifEmpty { null }
         )
 
-        val playerResults = result.rankedPlayers.mapIndexed { index, player ->
+        val playerResults = result.rankedPlayers.map { player ->
             PlayerResultEntity(
                 sessionId = session.id,
                 playerId = player.id,
                 playerName = player.name,
-                placement = index + 1,
+                placement = result.placementOf(player),
                 score = player.score
             )
         }
 
-        gameHistoryDao.insertCompletedGame(
+        gameHistoryDao.insertCompletedGameAndPrune(
             gameSession = gameSessionEntity,
-            playerResults = playerResults
+            playerResults = playerResults,
+            limit = historyLimit().coerceAtLeast(1)
         )
     }
 
@@ -67,4 +69,11 @@ class RoomGameHistoryRepository(
             )
         }
     }
+
+    override suspend fun pruneHistory(limit: Int) {
+        require(limit > 0)
+        gameHistoryDao.pruneHistory(limit)
+    }
+
+    override suspend fun clearHistory() = gameHistoryDao.clearHistory()
 }

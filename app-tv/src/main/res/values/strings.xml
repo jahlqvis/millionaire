@@ -5,27 +5,43 @@
 
     <string name="home_start_game">Starta spel</string>
     <string name="home_history">Historik</string>
+    <string name="home_settings">Inställningar</string>
+    <string name="home_resume">Fortsätt spel</string>
+    <string name="home_discard_title">Avsluta pausat spel?</string>
+    <string name="home_discard_message">Det pausade spelet försvinner om du startar ett nytt.</string>
+    <string name="home_discard_confirm">Starta nytt spel</string>
+    <string name="home_discard_cancel">Avbryt</string>
     <string name="home_subtitle">Svenskt frågespel för TV</string>
 
     <string name="player_setup_title">Välj antal spelare</string>
     <string name="player_setup_rounds">Antal rundor</string>
+    <string name="player_setup_timer">Tidsgräns per fråga</string>
+    <string name="player_setup_timer_off">Av</string>
+    <string name="player_setup_timer_on">30 sekunder</string>
     <string name="player_setup_player_label">Spelare %1$d</string>
     <string name="player_setup_back">Tillbaka</string>
     <string name="player_setup_start">Starta spel</string>
     <string name="player_setup_validation_min_one">Minst en spelare krävs</string>
 
     <string name="gameplay_round">Runda %1$d av %2$d</string>
+    <string name="gameplay_tiebreak_round">Utslagsrunda %1$d av 3</string>
     <string name="gameplay_turn">Tur: %1$s</string>
+    <string name="gameplay_timer">Tid kvar: %1$d s</string>
     <string name="gameplay_question">Fråga: %1$s</string>
     <string name="gameplay_option">%1$s: %2$s</string>
     <string name="gameplay_lifeline_fifty_fifty">50/50</string>
+    <string name="gameplay_lifeline_audience">Fråga publiken</string>
+    <string name="gameplay_lifeline_friend">Ring en vän</string>
+    <string name="gameplay_advice_friend">Jag tror att svaret är %1$s: %2$s. Jag är %3$d%% säker.</string>
+    <string name="gameplay_advice_continue">Fortsätt</string>
     <string name="gameplay_feedback_correct">Rätt svar!</string>
     <string name="gameplay_feedback_wrong">Fel svar</string>
+    <string name="gameplay_feedback_timeout">Tiden är slut</string>
     <string name="gameplay_correct_answer">Rätt svar: %1$s</string>
     <string name="gameplay_empty_state">Ingen aktiv omgång</string>
 
     <string name="results_title">Resultat</string>
-    <string name="results_tie">Oavgjort</string>
+    <string name="results_tie">Delad seger: %1$s</string>
     <string name="results_winner">Vinnare: %1$s</string>
     <string name="results_score_row">%1$d. %2$s - %3$d poäng</string>
     <string name="results_restart">Till startsidan</string>
@@ -35,10 +51,22 @@
     <string name="history_back">Tillbaka</string>
     <string name="history_loading">Laddar historik...</string>
     <string name="history_empty_state">Inga tidigare spel hittades</string>
-    <string name="history_tie">Oavgjort</string>
+    <string name="history_tie">Delad seger</string>
+    <string name="history_tie_named">Delad seger: %1$s</string>
     <string name="history_winner">Vinnare: %1$s</string>
     <string name="history_players_rounds">%1$d spelare • %2$d rundor • %3$s</string>
     <string name="history_result_row">%1$d. %2$s - %3$d poäng</string>
+
+    <string name="settings_title">Inställningar</string>
+    <string name="settings_sound">Ljudeffekter</string>
+    <string name="settings_sound_on">På</string>
+    <string name="settings_sound_off">Av</string>
+    <string name="settings_history_limit">Antal sparade spel</string>
+    <string name="settings_clear_history">Rensa historik</string>
+    <string name="settings_clear_title">Rensa spelhistoriken?</string>
+    <string name="settings_clear_message">Alla sparade spelresultat tas bort. Det går inte att ångra.</string>
+    <string name="settings_clear_confirm">Rensa</string>
+    <string name="settings_error">Kunde inte uppdatera historiken. Försök igen.</string>
 
     <string name="default_player_name">Spelare %1$d</string>
 </resources>

@@ -157,6 +157,108 @@ class GameUseCasesTest {
         }
     }
 
+    @Test
+    fun advice_respectsFiftyFiftyAndShowsValidPercentages() {
+        val question = sampleQuestion(id = "q1", correctId = "C")
+        val session = sampleSession(currentQuestionId = question.id)
+        val alwaysWrong = GetLifelineAdviceUseCase { bound -> if (bound == 100) 99 else 0 }
+
+        for (type in listOf(LifelineType.AUDIENCE, LifelineType.PHONE_A_FRIEND)) {
+            val result = alwaysWrong(session, question, type, setOf("A", "C"))
+            assertEquals("A", result.advice.suggestedOptionId)
+            assertEquals(100, result.advice.audiencePercentages.values.sum())
+            assertEquals(70, result.advice.audiencePercentages["A"])
+            assertEquals(30, result.advice.audiencePercentages["C"])
+            assertEquals(0, result.advice.audiencePercentages["B"])
+            assertEquals(0, result.advice.audiencePercentages["D"])
+            assertTrue(result.updatedSession.hasUsedLifeline("p1", type))
+            assertThrows(IllegalArgumentException::class.java) {
+                alwaysWrong(result.updatedSession, question, type, setOf("A", "C"))
+            }
+        }
+    }
+
+    @Test
+    fun advice_correctProbabilityUsesEightyOfOneHundredOutcomes() {
+        val question = sampleQuestion(id = "q1", correctId = "C")
+        val session = sampleSession(currentQuestionId = question.id)
+        var draw = 0
+        val advice = GetLifelineAdviceUseCase { bound -> if (bound == 100) draw++ else 0 }
+        val correctCount = (0 until 100).count {
+            advice(session, question, LifelineType.AUDIENCE).advice.suggestedOptionId == "C"
+        }
+        assertEquals(80, correctCount)
+    }
+
+    @Test
+    fun advice_rejectsInactiveAndInvalidQuestions() {
+        val question = sampleQuestion(id = "q1", correctId = "C")
+        val useCase = GetLifelineAdviceUseCase { 0 }
+        assertThrows(IllegalArgumentException::class.java) {
+            useCase(sampleSession(currentQuestionId = "other"), question, LifelineType.AUDIENCE)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            useCase(sampleSession(currentQuestionId = "q1"), question, LifelineType.AUDIENCE, setOf("A", "B"))
+        }
+    }
+
+    @Test
+    fun tiedLeaders_enterTieBreakAndOnlyCorrectPlayerWinsWithoutChangingScores() {
+        val players = listOf(Player("p1", "Anna", 2), Player("p2", "Bengt", 2), Player("p3", "Cecilia", 1))
+        val advance = AdvanceTurnUseCase()
+        val submit = SubmitAnswerUseCase()
+        val question = sampleQuestion(id = "q1", correctId = "C")
+        var session = advance(sampleSession(players = players, currentPlayerIndex = 2, currentRound = 5))
+        assertEquals(listOf("p1", "p2"), session.tieBreak?.remainingPlayerIds)
+        assertEquals("p1", session.activePlayer.id)
+
+        session = advance(submit(session, question, "A").updatedSession)
+        assertEquals("p2", session.activePlayer.id)
+        session = advance(submit(session, question, "C").updatedSession)
+
+        assertEquals(GameStatus.FINISHED, session.status)
+        assertEquals(listOf(2, 2, 1), session.players.map { it.score })
+        val result = FinishGameUseCase()(session)
+        assertEquals("p2", result.winner?.id)
+        assertEquals(listOf("p2", "p1", "p3"), result.rankedPlayers.map { it.id })
+        assertEquals(listOf(1, 2, 3), result.rankedPlayers.map { result.placementOf(it) })
+    }
+
+    @Test
+    fun tieBreak_allMissesPreservePlayersAndThreeRoundsEndInSharedWin() {
+        val players = listOf(Player("p1", "Anna", 2), Player("p2", "Bengt", 2))
+        val advance = AdvanceTurnUseCase()
+        val submit = SubmitAnswerUseCase()
+        val question = sampleQuestion(id = "q1", correctId = "C")
+        var session = advance(sampleSession(players = players, currentPlayerIndex = 1, currentRound = 5))
+        repeat(3) { round ->
+            assertEquals(round + 1, session.tieBreak?.round)
+            session = advance(submit(session, question, null).updatedSession)
+            session = advance(submit(session, question, "A").updatedSession)
+        }
+        val result = FinishGameUseCase()(session)
+        assertEquals(GameStatus.FINISHED, session.status)
+        assertTrue(result.isTie)
+        assertEquals(listOf("p1", "p2"), result.winners.map { it.id })
+        assertEquals(listOf(1, 1), result.rankedPlayers.map { result.placementOf(it) })
+    }
+
+    @Test
+    fun tieBreak_eliminatesOnlyAfterEveryRemainingPlayerHasAnswered() {
+        val players = (1..4).map { Player("p$it", "Player $it", 3) }
+        val advance = AdvanceTurnUseCase()
+        val submit = SubmitAnswerUseCase()
+        val question = sampleQuestion(id = "q1", correctId = "C")
+        var session = advance(sampleSession(players = players, currentPlayerIndex = 3, currentRound = 5))
+        for (answer in listOf("C", "A", "C", "A")) {
+            session = advance(submit(session, question, answer).updatedSession)
+        }
+        assertEquals(GameStatus.IN_PROGRESS, session.status)
+        assertEquals(2, session.tieBreak?.round)
+        assertEquals(listOf("p1", "p3"), session.tieBreak?.remainingPlayerIds)
+        assertEquals("p1", session.activePlayer.id)
+    }
+
     private fun sampleSession(
         players: List<Player> = listOf(
             Player(id = "p1", name = "Anna", score = 0),

@@ -13,6 +13,13 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +35,10 @@ data class PlayerSetupUiState(
     val startButtonLabel: String,
     val roundsLabel: String,
     val roundCount: Int,
+    val timerLabel: String,
+    val timerOffLabel: String,
+    val timerOnLabel: String,
+    val timerEnabled: Boolean,
     val playerCount: Int,
     val names: List<String>,
     val validationError: String?
@@ -39,9 +50,11 @@ fun PlayerSetupScreen(
     onPlayerCountChanged: (Int) -> Unit,
     onPlayerNameChanged: (Int, String) -> Unit,
     onRoundCountChanged: (Int) -> Unit,
+    onTimerEnabledChanged: (Boolean) -> Unit,
     onStartGame: () -> Unit,
     onBack: () -> Unit
 ) {
+    val focusManager = LocalFocusManager.current
     TvScreenScaffold {
         Column(
             modifier = Modifier
@@ -70,7 +83,13 @@ fun PlayerSetupScreen(
 
             repeat(state.playerCount) { index ->
                 OutlinedTextField(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) false else when (event.key) {
+                            Key.DirectionDown -> focusManager.moveFocus(FocusDirection.Down)
+                            Key.DirectionUp -> focusManager.moveFocus(FocusDirection.Up)
+                            else -> false
+                        }
+                    },
                     value = state.names[index],
                     onValueChange = { onPlayerNameChanged(index, it) },
                     label = {
@@ -102,6 +121,22 @@ fun PlayerSetupScreen(
                         modifier = Modifier.weight(1f)
                     )
                 }
+            }
+
+            Text(text = state.timerLabel, color = TvTheme.TextPrimary, fontSize = 22.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                TvSecondaryButton(
+                    label = state.timerOffLabel,
+                    onClick = { onTimerEnabledChanged(false) },
+                    selected = !state.timerEnabled,
+                    modifier = Modifier.weight(1f)
+                )
+                TvSecondaryButton(
+                    label = state.timerOnLabel,
+                    onClick = { onTimerEnabledChanged(true) },
+                    selected = state.timerEnabled,
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             state.validationError?.let { message ->
