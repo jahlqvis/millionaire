@@ -49,6 +49,36 @@ class AppSmokeTest {
     }
 
     @Test
+    fun lifelinesCanBeCombinedAndAdviceSurvivesPause() {
+        composeRule.onNodeWithText("Starta spel").performClick()
+        composeRule.onNodeWithText("1").performClick()
+        composeRule.onNodeWithText("30 sekunder").performScrollTo().performClick()
+        composeRule.onNodeWithText("Starta spel").performScrollTo().performClick()
+        composeRule.onNodeWithText("50/50").performScrollTo().performClick()
+        composeRule.onNodeWithText("Fråga publiken").performScrollTo().performClick()
+        composeRule.onNodeWithText("Fortsätt").assertExists()
+        org.junit.Assert.assertEquals(4, composeRule.onAllNodesWithText("%", substring = true).fetchSemanticsNodes().size)
+        composeRule.onNodeWithText("Fortsätt").performClick()
+        composeRule.onNodeWithText("Ring en vän").performScrollTo().performClick()
+        composeRule.onNodeWithText("Jag tror att svaret", substring = true).assertExists()
+        composeRule.runOnIdle { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
+        composeRule.onNodeWithText("Fortsätt spel").performClick()
+        composeRule.onNodeWithText("Jag tror att svaret", substring = true).assertExists()
+        composeRule.onNodeWithText("Fortsätt").performClick()
+        composeRule.onNodeWithText("Tid kvar:", substring = true).assertExists()
+    }
+
+    @Test
+    fun settingsAreAccessibleFromHome() {
+        composeRule.onNodeWithText("Inställningar").performClick()
+        composeRule.onNodeWithText("Ljudeffekter").assertExists()
+        composeRule.onNodeWithText("Antal sparade spel").assertExists()
+        composeRule.onNodeWithText("Rensa historik").assertExists()
+        composeRule.onNodeWithText("Tillbaka").performScrollTo().performClick()
+        composeRule.onNodeWithText("Starta spel").assertExists()
+    }
+
+    @Test
     fun happyPath_startUseFiftyFiftyFinishAndSeeHistoryEntry() {
         composeRule.onNodeWithText("Starta spel").performClick()
         composeRule.onNodeWithText("1").performClick()
