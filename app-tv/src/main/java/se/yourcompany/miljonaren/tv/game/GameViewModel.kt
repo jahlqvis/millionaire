@@ -45,7 +45,8 @@ class GameViewModel(
 
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
-    private val _audioEvents = MutableSharedFlow<SoundEffect>(replay = 4, extraBufferCapacity = 8)
+    // Sound effects are one-shot events and must not replay on activity recreation.
+    private val _audioEvents = MutableSharedFlow<SoundEffect>(extraBufferCapacity = 8)
     val audioEvents: SharedFlow<SoundEffect> = _audioEvents.asSharedFlow()
     private var timerJob: Job? = null
     private var revealJob: Job? = null
