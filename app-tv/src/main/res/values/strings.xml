@@ -23,6 +23,7 @@
     <string name="player_setup_validation_min_one">Minst en spelare krävs</string>
 
     <string name="gameplay_round">Runda %1$d av %2$d</string>
+    <string name="gameplay_tiebreak_round">Utslagsrunda %1$d av 3</string>
     <string name="gameplay_turn">Tur: %1$s</string>
     <string name="gameplay_timer">Tid kvar: %1$d s</string>
     <string name="gameplay_question">Fråga: %1$s</string>
@@ -39,7 +40,7 @@
     <string name="gameplay_empty_state">Ingen aktiv omgång</string>
 
     <string name="results_title">Resultat</string>
-    <string name="results_tie">Oavgjort</string>
+    <string name="results_tie">Delad seger: %1$s</string>
     <string name="results_winner">Vinnare: %1$s</string>
     <string name="results_score_row">%1$d. %2$s - %3$d poäng</string>
     <string name="results_restart">Till startsidan</string>
@@ -49,7 +50,8 @@
     <string name="history_back">Tillbaka</string>
     <string name="history_loading">Laddar historik...</string>
     <string name="history_empty_state">Inga tidigare spel hittades</string>
-    <string name="history_tie">Oavgjort</string>
+    <string name="history_tie">Delad seger</string>
+    <string name="history_tie_named">Delad seger: %1$s</string>
     <string name="history_winner">Vinnare: %1$s</string>
     <string name="history_players_rounds">%1$d spelare • %2$d rundor • %3$s</string>
     <string name="history_result_row">%1$d. %2$s - %3$d poäng</string>

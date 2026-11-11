@@ -9,6 +9,7 @@ import se.yourcompany.miljonaren.domain.model.GameStatus
 import se.yourcompany.miljonaren.domain.model.LifelineType
 import se.yourcompany.miljonaren.domain.model.Player
 import se.yourcompany.miljonaren.domain.model.Question
+import se.yourcompany.miljonaren.domain.model.TieBreakState
 
 const val SPRINT_ONE_MAX_ROUNDS = 5
 val SUPPORTED_ROUND_COUNTS = setOf(3, 5, 10)
@@ -176,7 +177,7 @@ class SubmitAnswerUseCase {
         val isCorrect = question.correctOptionId == selectedOptionId
         val activeIndex = session.currentPlayerIndex
         val updatedPlayers = session.players.mapIndexed { index, player ->
-            if (index == activeIndex && isCorrect) {
+            if (session.tieBreak == null && index == activeIndex && isCorrect) {
                 player.copy(score = player.score + 1)
             } else {
                 player
@@ -186,7 +187,10 @@ class SubmitAnswerUseCase {
         return AnswerEvaluation(
             updatedSession = session.copy(
                 players = updatedPlayers,
-                currentQuestionId = null
+                currentQuestionId = null,
+                tieBreak = session.tieBreak?.let { tie ->
+                    if (isCorrect) tie.copy(correctPlayerIds = tie.correctPlayerIds + session.activePlayer.id) else tie
+                }
             ),
             isCorrect = isCorrect
         )
@@ -199,6 +203,28 @@ class AdvanceTurnUseCase {
             return session
         }
 
+        val tie = session.tieBreak
+        if (tie != null) {
+            val playerPosition = tie.remainingPlayerIds.indexOf(session.activePlayer.id)
+            require(playerPosition >= 0) { "Active player must be in the tie-breaker." }
+            if (playerPosition < tie.remainingPlayerIds.lastIndex) {
+                val nextId = tie.remainingPlayerIds[playerPosition + 1]
+                return session.copy(currentPlayerIndex = session.players.indexOfFirst { it.id == nextId })
+            }
+            val survivors = if (tie.correctPlayerIds.isEmpty()) tie.remainingPlayerIds
+                else tie.remainingPlayerIds.filter { it in tie.correctPlayerIds }
+            if (survivors.size == 1 || tie.round >= 3) {
+                return session.copy(
+                    status = GameStatus.FINISHED,
+                    tieBreak = tie.copy(remainingPlayerIds = survivors)
+                )
+            }
+            return session.copy(
+                currentPlayerIndex = session.players.indexOfFirst { it.id == survivors.first() },
+                tieBreak = TieBreakState(round = tie.round + 1, remainingPlayerIds = survivors)
+            )
+        }
+
         val lastPlayerIndex = session.players.lastIndex
         val isLastPlayerInRound = session.currentPlayerIndex == lastPlayerIndex
 
@@ -207,7 +233,13 @@ class AdvanceTurnUseCase {
         }
 
         if (session.currentRound >= session.maxRounds) {
-            return session.copy(status = GameStatus.FINISHED)
+            val topScore = session.players.maxOf { it.score }
+            val leaders = session.players.filter { it.score == topScore }
+            if (leaders.size < 2) return session.copy(status = GameStatus.FINISHED)
+            return session.copy(
+                currentPlayerIndex = session.players.indexOfFirst { it.id == leaders.first().id },
+                tieBreak = TieBreakState(round = 1, remainingPlayerIds = leaders.map { it.id })
+            )
         }
 
         return session.copy(
@@ -219,18 +251,22 @@ class AdvanceTurnUseCase {
 
 class FinishGameUseCase {
     operator fun invoke(session: GameSession): GameResult {
+        val topScore = session.players.maxOfOrNull { it.score }
+        val winnerIds = session.tieBreak?.remainingPlayerIds?.toSet()
+            ?: session.players.filter { it.score == topScore }.map { it.id }.toSet()
         val rankedPlayers = session.players.sortedWith(
-            compareByDescending<Player> { it.score }.thenBy { it.name.lowercase() }
+            compareByDescending<Player> { it.id in winnerIds }
+                .thenByDescending { it.score }
+                .thenBy { it.name.lowercase() }
         )
-
-        val topScore = rankedPlayers.firstOrNull()?.score
-        val tiedPlayers = rankedPlayers.count { it.score == topScore }
-        val isTie = tiedPlayers > 1
+        val winners = rankedPlayers.filter { it.id in winnerIds }
+        val isTie = winners.size > 1
 
         return GameResult(
             rankedPlayers = rankedPlayers,
             isTie = isTie,
-            winner = if (isTie) null else rankedPlayers.firstOrNull()
+            winner = winners.singleOrNull(),
+            winners = winners
         )
     }
 }

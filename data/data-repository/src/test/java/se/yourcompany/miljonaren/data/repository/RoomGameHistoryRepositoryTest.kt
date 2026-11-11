@@ -39,6 +39,17 @@ class RoomGameHistoryRepositoryTest {
     }
 
     @Test
+    fun saveCompletedGame_persistsSharedWinnersAndFirstPlace() = runTest {
+        val dao = FakeGameHistoryDao()
+        val session = sampleSession()
+        val winners = session.players
+        val result = GameResult(rankedPlayers = winners, isTie = true, winner = null, winners = winners)
+        RoomGameHistoryRepository(dao).saveCompletedGame(session, result, 1_000L)
+        assertEquals("Anna, Bengt", dao.gameSessions.single().winnerName)
+        assertEquals(listOf(1, 1), dao.playerResultsBySession[session.id]!!.map { it.placement })
+    }
+
+    @Test
     fun getRecentGames_mapsEntitiesToDomainEntries() = runTest {
         val dao = FakeGameHistoryDao()
         dao.gameSessions += GameSessionEntity("s2", 2_000L, 2, 5, true, null)
