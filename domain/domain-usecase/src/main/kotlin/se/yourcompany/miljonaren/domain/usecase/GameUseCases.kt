@@ -18,6 +18,9 @@ private const val MAX_PLAYERS = 4
 
 interface QuestionRepository {
     fun getNextUnusedQuestion(askedIds: Set<String>): Question?
+    fun getNextQuestion(session: GameSession): Question? = getNextUnusedQuestion(session.askedQuestionIds)
+    fun startGame() = Unit
+    fun recordCompletedGame() = Unit
 }
 
 data class NextQuestionResult(
@@ -106,12 +109,16 @@ class StartGameUseCase {
 class GetNextQuestionUseCase(
     private val questionRepository: QuestionRepository
 ) {
+    fun startGame() = questionRepository.startGame()
+
+    fun recordCompletedGame() = questionRepository.recordCompletedGame()
+
     operator fun invoke(session: GameSession): NextQuestionResult {
         if (session.status == GameStatus.FINISHED) {
             return NextQuestionResult(session, null)
         }
 
-        val nextQuestion = questionRepository.getNextUnusedQuestion(session.askedQuestionIds)
+        val nextQuestion = questionRepository.getNextQuestion(session)
         if (nextQuestion == null) {
             return NextQuestionResult(session.copy(status = GameStatus.FINISHED), null)
         }

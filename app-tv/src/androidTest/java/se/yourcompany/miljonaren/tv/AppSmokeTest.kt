@@ -5,6 +5,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.onFirst
 import android.view.KeyEvent
 import org.junit.Rule
 import org.junit.Test
@@ -56,12 +59,13 @@ class AppSmokeTest {
         }
         composeRule.onNodeWithText("50/50").performClick()
 
+        val selectableAnswer = (hasText("A:", substring = true) or hasText("B:", substring = true) or
+            hasText("C:", substring = true) or hasText("D:", substring = true)) and isEnabled()
         repeat(5) {
             composeRule.waitUntil(timeoutMillis = 10_000) {
-                composeRule.onAllNodesWithText("A:", substring = true).fetchSemanticsNodes().isNotEmpty()
+                composeRule.onAllNodes(selectableAnswer).fetchSemanticsNodes().isNotEmpty()
             }
-            composeRule.onNodeWithText("A:", substring = true).performScrollTo().performClick()
-            Thread.sleep(5300)
+            composeRule.onAllNodes(selectableAnswer).onFirst().performScrollTo().performClick()
         }
 
         composeRule.waitUntil(timeoutMillis = 10_000) {
