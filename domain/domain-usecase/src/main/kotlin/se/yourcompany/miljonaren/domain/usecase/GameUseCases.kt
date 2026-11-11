@@ -9,6 +9,7 @@ import se.yourcompany.miljonaren.domain.model.GameStatus
 import se.yourcompany.miljonaren.domain.model.LifelineType
 import se.yourcompany.miljonaren.domain.model.Player
 import se.yourcompany.miljonaren.domain.model.Question
+import se.yourcompany.miljonaren.domain.model.QuestionTheme
 import se.yourcompany.miljonaren.domain.model.TieBreakState
 
 const val SPRINT_ONE_MAX_ROUNDS = 5
@@ -18,6 +19,10 @@ private const val MAX_PLAYERS = 4
 
 interface QuestionRepository {
     fun getNextUnusedQuestion(askedIds: Set<String>): Question?
+    fun getQuestionThemes(): List<QuestionTheme> = listOf(QuestionTheme("general", "Blandat"))
+    fun selectQuestionTheme(themeId: String) {
+        require(themeId == "general") { "Unknown question theme: $themeId" }
+    }
     fun getNextQuestion(session: GameSession): Question? = getNextUnusedQuestion(session.askedQuestionIds)
     fun startGame() = Unit
     fun recordCompletedGame() = Unit
@@ -109,6 +114,10 @@ class StartGameUseCase {
 class GetNextQuestionUseCase(
     private val questionRepository: QuestionRepository
 ) {
+    fun getQuestionThemes() = questionRepository.getQuestionThemes()
+
+    fun selectQuestionTheme(themeId: String) = questionRepository.selectQuestionTheme(themeId)
+
     fun startGame() = questionRepository.startGame()
 
     fun recordCompletedGame() = questionRepository.recordCompletedGame()

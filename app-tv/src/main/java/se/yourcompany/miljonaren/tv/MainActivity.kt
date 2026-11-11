@@ -41,6 +41,7 @@ import se.yourcompany.miljonaren.feature.history.HistoryUiState
 import se.yourcompany.miljonaren.feature.home.HomeUiState
 import se.yourcompany.miljonaren.feature.home.HomeScreen
 import se.yourcompany.miljonaren.feature.playersetup.PlayerSetupUiState
+import se.yourcompany.miljonaren.feature.playersetup.QuestionThemeUiState
 import se.yourcompany.miljonaren.feature.playersetup.PlayerSetupScreen
 import se.yourcompany.miljonaren.feature.results.ResultsPlayerUiState
 import se.yourcompany.miljonaren.feature.results.ResultsScreen
@@ -95,6 +96,7 @@ private fun MillionaireTvRoot() {
     )
     val minPlayersValidationError = stringResource(id = R.string.player_setup_validation_min_one)
     var playerCount by remember { mutableIntStateOf(2) }
+    var selectedThemeId by remember(gameViewModel) { mutableStateOf(gameViewModel.defaultQuestionThemeId) }
     var roundCount by remember { mutableIntStateOf(5) }
     var timerEnabled by remember { mutableStateOf(false) }
     var showDiscardConfirmation by remember { mutableStateOf(false) }
@@ -104,6 +106,7 @@ private fun MillionaireTvRoot() {
 
     fun resetPlayerSetupForm() {
         playerCount = 2
+        selectedThemeId = gameViewModel.defaultQuestionThemeId
         roundCount = 5
         timerEnabled = false
         playerNames = defaultPlayerNames
@@ -117,6 +120,9 @@ private fun MillionaireTvRoot() {
         },
         backButtonLabel = stringResource(id = R.string.player_setup_back),
         startButtonLabel = stringResource(id = R.string.player_setup_start),
+        themeLabel = stringResource(id = R.string.player_setup_theme),
+        themes = gameViewModel.questionThemes.map { QuestionThemeUiState(it.id, it.nameSv) },
+        selectedThemeId = selectedThemeId,
         roundsLabel = stringResource(id = R.string.player_setup_rounds),
         roundCount = roundCount,
         timerLabel = stringResource(id = R.string.player_setup_timer),
@@ -314,6 +320,7 @@ private fun MillionaireTvRoot() {
                         this[index] = newName
                     }
                 },
+                onThemeChanged = { selectedThemeId = it },
                 onRoundCountChanged = { roundCount = it },
                 onTimerEnabledChanged = { timerEnabled = it },
                 onStartGame = {
@@ -327,7 +334,7 @@ private fun MillionaireTvRoot() {
                     }
 
                     playerSetupError = null
-                    gameViewModel.startGame(selectedNames, roundCount, timerEnabled)
+                    gameViewModel.startGame(selectedNames, roundCount, timerEnabled, selectedThemeId)
                     if (gameViewModel.uiState.value.result != null) {
                         navController.navigate(AppRoutes.RESULTS) {
                             launchSingleTop = true

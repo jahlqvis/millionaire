@@ -28,11 +28,16 @@ import se.yourcompany.miljonaren.core.ui.TvScreenScaffold
 import se.yourcompany.miljonaren.core.ui.TvSecondaryButton
 import se.yourcompany.miljonaren.core.ui.TvTheme
 
+data class QuestionThemeUiState(val id: String, val name: String)
+
 data class PlayerSetupUiState(
     val title: String,
     val playerNameLabels: List<String>,
     val backButtonLabel: String,
     val startButtonLabel: String,
+    val themeLabel: String,
+    val themes: List<QuestionThemeUiState>,
+    val selectedThemeId: String,
     val roundsLabel: String,
     val roundCount: Int,
     val timerLabel: String,
@@ -49,6 +54,7 @@ fun PlayerSetupScreen(
     state: PlayerSetupUiState,
     onPlayerCountChanged: (Int) -> Unit,
     onPlayerNameChanged: (Int, String) -> Unit,
+    onThemeChanged: (String) -> Unit,
     onRoundCountChanged: (Int) -> Unit,
     onTimerEnabledChanged: (Boolean) -> Unit,
     onStartGame: () -> Unit,
@@ -108,6 +114,16 @@ fun PlayerSetupScreen(
                         unfocusedIndicatorColor = TvTheme.SurfaceAlt,
                         cursorColor = TvTheme.Accent
                     )
+                )
+            }
+
+            Text(text = state.themeLabel, color = TvTheme.TextPrimary, fontSize = 22.sp)
+            state.themes.forEach { theme ->
+                TvSecondaryButton(
+                    label = theme.name,
+                    onClick = { onThemeChanged(theme.id) },
+                    selected = theme.id == state.selectedThemeId,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 

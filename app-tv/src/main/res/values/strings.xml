@@ -14,6 +14,7 @@
     <string name="home_subtitle">Svenskt frågespel för TV</string>
 
     <string name="player_setup_title">Välj antal spelare</string>
+    <string name="player_setup_theme">Frågetema</string>
     <string name="player_setup_rounds">Antal rundor</string>
     <string name="player_setup_timer">Tidsgräns per fråga</string>
     <string name="player_setup_timer_off">Av</string>
